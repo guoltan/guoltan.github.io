@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  
+  <title>guoltan个人博客</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta property="og:type" content="website">
+<meta property="og:title" content="guoltan个人博客">
+<meta property="og:url" content="http://example.com/index.html">
+<meta property="og:site_name" content="guoltan个人博客">
+<meta property="og:locale" content="en_US">
+<meta property="article:author" content="guoltan">
+<meta name="twitter:card" content="summary">
+  
+    <link rel="alternate" href="/atom.xml" title="guoltan个人博客" type="application/atom+xml">
+  
+  
+    <link rel="shortcut icon" href="/favicon.png">
+  
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+  
+    
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.min.css">
+
+  
+  
+<meta name="generator" content="Hexo 7.1.1"></head>
+
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">guoltan个人博客</a>
+      </h1>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"><span class="fa fa-bars"></span></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+        
+          <a class="nav-icon" href="/atom.xml" title="RSS Feed"><span class="fa fa-rss"></span></a>
+        
+        <a class="nav-icon nav-search-btn" title="Search"><span class="fa fa-search"></span></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://example.com"></form>
+      </div>
+    </div>
+  </div>
+</header>
+
+      <div class="outer">
+        <section id="main">
+  
+    <article id="post-kubectl logs 日志采集工具" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
+  <div class="article-meta">
+    <a href="/2024/01/23/kubectl%20logs%20%E6%97%A5%E5%BF%97%E9%87%87%E9%9B%86%E5%B7%A5%E5%85%B7/" class="article-date">
+  <time class="dt-published" datetime="2024-01-23T12:11:25.000Z" itemprop="datePublished">2024-01-23</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="p-name article-title" href="/2024/01/23/kubectl%20logs%20%E6%97%A5%E5%BF%97%E9%87%87%E9%9B%86%E5%B7%A5%E5%85%B7/">基于资源对应 pod 批量执行 kubectl logs 采集工具</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="e-content article-entry" itemprop="articleBody">
+      
+        <h2 id="背景"><a href="#背景" class="headerlink" title="背景"></a>背景</h2><p>  在交付运维阶段，有时候在日志平台还没有就绪，或者日志平台有问题情况下，我们需要对 Pod 进行诊断，这时候可能需要去读取 pod 的标准输出。但是一般情况下环境的 Pod 都是多副本高可用的，服务的请求可能会随机落到任意 Pod。对此通常的解决方法是拉多个窗口去观测，这种方式不大方便。这里就通过开发一个简易日志采集脚本来简化改工作。</p>
+<h2 id="实现"><a href="#实现" class="headerlink" title="实现"></a>实现</h2><p>  实际上我只需要获取 pod 的清单，然后挨个 pod 执行 kubectl logs 的指令，并挂在后台。然后再通过 tail 命令去获取所有 log 的输出即可。本身 tail 对多个文件的输出是自带了 title。可以简化工作量。</p>
+<p>  获取 pod 清单的方式是让使用者输入 pod 控制器的类型（deployment、daemonset等等或者简写），命名空间，对应控制器资源的名称，每个控制器都是通过标签选择来判断 pod 是否在集群中满足数量。所以这里通过获取控制器的 matchlabels 来生成判断条件。后续通过 kubectl get pod -l 标签的方式就能直接拿到清单了。</p>
+<p>  考虑到日志的展示本身就是需要生成临时日志文件，并事后可能需要保存，或者多次执行，脚本会自动创建一个命名空间+资源名称的目录，来存储日志文件。并加入一些删除的逻辑，强制退出脚本或者启动脚本时都会检查 kubectl logs 的进程还有没有运行在环境，如果有就删除残留的进程。</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta prompt_">#</span><span class="language-bash">!/bin/bash</span></span><br><span class="line">print_log()</span><br><span class="line">&#123;</span><br><span class="line">    log_level=$1</span><br><span class="line">    log_msg=$2</span><br><span class="line">    currentTime=&quot;$(date &#x27;+%F %T&#x27;)&quot;</span><br><span class="line">    echo &quot;$currentTime    [$log_level]    $log_msg&quot;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">clear() &#123;</span><br><span class="line">    if [ -f clearlist ]; then</span><br><span class="line">        while IFS= read -r line; do</span><br><span class="line">          if [ $(ps aux | grep &quot;$&#123;line&#125;&quot; | wc -l) -gt 1 ] ; then</span><br><span class="line">            ps aux | grep &quot;$&#123;line&#125;&quot; | grep -v grep | awk &#x27;&#123; print $2 &#125;&#x27; | xargs kill</span><br><span class="line">          fi</span><br><span class="line">        done &lt; clearlist</span><br><span class="line">    fi</span><br><span class="line">    rm -f clearlist</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">ctrl_c() &#123;</span><br><span class="line">    clear</span><br><span class="line">    print_log &quot;INFO&quot; &quot;Is k8s_log_collector.sh: line xx:  xxxx Terminated appeared, please ingore.&quot;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">trap ctrl_c INT</span><br><span class="line"></span><br><span class="line">baseName=$(basename &quot;$0&quot;)</span><br><span class="line"></span><br><span class="line">if [ $# -lt 3 ]; then</span><br><span class="line">    print_log &quot;INFO&quot; &quot;usage: $baseName resource ns name&quot;</span><br><span class="line">    print_log &quot;INFO&quot; &quot;Example:&quot;</span><br><span class="line">    print_log &quot;INFO&quot; &quot;  $baseName ds kube-flannel kube-flannel-ds&quot;</span><br><span class="line">    print_log &quot;INFO&quot; &quot;  $baseName deploy default nginx&quot;</span><br><span class="line">    exit 1</span><br><span class="line">fi</span><br><span class="line"></span><br><span class="line">if ! kubectl get $1 -n $2 $3 &amp;&gt; /dev/null; then</span><br><span class="line">    echo &quot;resource not exits.&quot;</span><br><span class="line">    exit 1</span><br><span class="line">fi</span><br><span class="line"></span><br><span class="line">log_path=log_collect/$2/$1_$2_$3/</span><br><span class="line">if [ -d log_collect/$2 ]; then</span><br><span class="line">    clear</span><br><span class="line">    mv log_collect/$2 log_collect/$2_$(date +%Y%d%H%M%T)</span><br><span class="line">fi</span><br><span class="line"></span><br><span class="line">mkdir -p $&#123;log_path&#125;</span><br><span class="line"></span><br><span class="line">labels=$(kubectl get $1 -n $2 $3 -o jsonpath=&quot;&#123;.spec.selector.matchLabels&#125;&quot;  | sed &#x27;s/&#123;//&#x27; | sed &#x27;s/&#125;//&#x27; | sed &#x27;s/&quot;//g&#x27; | sed &#x27;s/:/=/g&#x27;)</span><br><span class="line"></span><br><span class="line">podlist=$(kubectl get pod -n $2 -l $&#123;labels&#125; --no-headers | awk &#x27;&#123; print $1 &#125;&#x27;)</span><br><span class="line"></span><br><span class="line">for pod in $&#123;podlist&#125;</span><br><span class="line">do</span><br><span class="line">    echo &quot;kubectl logs -n $2 $&#123;pod&#125;&quot; &gt;&gt; clearlist</span><br><span class="line">    kubectl logs -n $2 $&#123;pod&#125; -f &amp;&gt; $&#123;log_path&#125;/$&#123;pod&#125;.log &amp;</span><br><span class="line">done</span><br><span class="line"></span><br><span class="line">print_log &quot;INFO&quot; &quot;Log collection started, wait for 2 seconds.&quot;</span><br><span class="line">sleep 2</span><br><span class="line"></span><br><span class="line">tail -f $&#123;log_path&#125;/*</span><br></pre></td></tr></table></figure>
+
+<p>  效果预览：</p>
+<img src="/2024/01/23/kubectl%20logs%20%E6%97%A5%E5%BF%97%E9%87%87%E9%9B%86%E5%B7%A5%E5%85%B7/1.png" class="" title="1.png">
+
+<p>  目前初版只是简单的实现了功能，整体逻辑和功能还比较搓。后续代码在 orca-tools 中继续维护。</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://example.com/2024/01/23/kubectl%20logs%20%E6%97%A5%E5%BF%97%E9%87%87%E9%9B%86%E5%B7%A5%E5%85%B7/" data-id="clrr7g1b6000098ur7vja87c6" data-title="基于资源对应 pod 批量执行 kubectl logs 采集工具" class="article-share-link"><span class="fa fa-share">Share</span></a>
+      
+      
+      
+  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/K8S/" rel="tag">K8S</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/%E5%B7%A5%E5%85%B7/" rel="tag">工具</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+
+  
+    <article id="post-kubernetes 单节点快速安装" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
+  <div class="article-meta">
+    <a href="/2024/01/16/kubernetes%20%E5%8D%95%E8%8A%82%E7%82%B9%E5%BF%AB%E9%80%9F%E5%AE%89%E8%A3%85/" class="article-date">
+  <time class="dt-published" datetime="2024-01-16T10:11:25.000Z" itemprop="datePublished">2024-01-16</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="p-name article-title" href="/2024/01/16/kubernetes%20%E5%8D%95%E8%8A%82%E7%82%B9%E5%BF%AB%E9%80%9F%E5%AE%89%E8%A3%85/">Kubernetes 快速拉起单节点集群</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="e-content article-entry" itemprop="articleBody">
+      
+        <h2 id="背景"><a href="#背景" class="headerlink" title="背景"></a>背景</h2><p>  考虑到近期会做多 Kubernetes 集群相关的一些验证，需要频繁创建单机版的 K8S 集群。需要编写一个简单的自动化 K8S 安装脚本。</p>
+<h2 id="实现"><a href="#实现" class="headerlink" title="实现"></a>实现</h2><p>  基于社区 Kubernetes 提供的安装步骤，做了一下简单的脚本自动化封装。初版内容如下</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta prompt_">#</span><span class="language-bash">!/bin/bash</span></span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">用于实现单节点部署 K8S，仅用于部署调试、开发环境，验证于 CentOS 7.9 环境</span></span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">部署后使用默认 K8S CIDR，机器主机名称修改为 K8S-Master01，并且安装 flannel。</span></span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">适用于国区</span></span><br><span class="line"></span><br><span class="line">init_repo() &#123;</span><br><span class="line">    cat &gt; /etc/yum.repos.d/kubernetes.repo &lt;&lt; EOF</span><br><span class="line">[kubernetes]</span><br><span class="line">name=Kubernetes</span><br><span class="line">baseurl=https://pkgs.k8s.io/core:/stable:/v1.29/rpm/</span><br><span class="line">enabled=1</span><br><span class="line">gpgcheck=1</span><br><span class="line">gpgkey=https://pkgs.k8s.io/core:/stable:/v1.29/rpm/repodata/repomd.xml.key</span><br><span class="line">EOF</span><br><span class="line">    yum -y install yum-utils</span><br><span class="line">    yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">install_pkg() &#123;</span><br><span class="line">    yum -y install kubelet kubeadm containerd kubectl</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">config_ntp() &#123;</span><br><span class="line">    yum -y install chrony</span><br><span class="line">    sed -i &#x27;/server/ d&#x27; /etc/chrony.conf</span><br><span class="line">    echo &quot;server ntp1.aliyun.com iburst&quot; &gt;&gt; /etc/chrony.conf</span><br><span class="line">    systemctl enable chronyd</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">crictl_init() &#123;</span><br><span class="line">    cat &gt; /etc/crictl.yaml &lt;&lt;EOF</span><br><span class="line">runtime-endpoint: unix:///var/run/containerd/containerd.sock</span><br><span class="line">image-endpoint: unix:///var/run/containerd/containerd.sock</span><br><span class="line">timeout: 0</span><br><span class="line">debug: false</span><br><span class="line">pull-image-on-create: false</span><br><span class="line">EOF</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">init_containerd() &#123;</span><br><span class="line">    containerd config default &gt; /etc/containerd/config.toml</span><br><span class="line">    sed -i &#x27;s/registry.k8s.io/registry.aliyuncs.com\/google_containers/&#x27; /etc/containerd/config.toml</span><br><span class="line">    systemctl restart containerd</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">service_onboot() &#123;</span><br><span class="line">    systemctl enable containerd</span><br><span class="line">    systemctl enable kubelet</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">disable_swap() &#123;</span><br><span class="line">    swapoff -a</span><br><span class="line">    sed -i &#x27;/swap/ s/^/#/g&#x27;  /etc/fstab</span><br><span class="line">&#125;</span><br><span class="line"><span class="meta prompt_"></span></span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">根据默认网关出接口的 IP 配置 hosts</span></span><br><span class="line">init_etchosts() &#123;</span><br><span class="line">    netif=$(ip route show | grep default | awk &#x27;&#123; print $5 &#125;&#x27;)</span><br><span class="line">    ipaddr=$(ip addr show $&#123;netif&#125; | grep -w inet | awk &#x27;&#123;print $2&#125;&#x27; | awk -F&#x27;/&#x27; &#x27;&#123; print $1 &#125;&#x27;)</span><br><span class="line">    echo &#x27;$&#123;ipaddr&#125; k8s-master01&#x27; &gt;&gt; /etc/hosts</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">init_sysctl() &#123;</span><br><span class="line">  cat &lt;&lt;EOF | sudo tee /etc/modules-load.d/k8s.conf</span><br><span class="line">overlay</span><br><span class="line">br_netfilter</span><br><span class="line">EOF</span><br><span class="line">    modprobe overlay</span><br><span class="line">    modprobe br_netfilter</span><br><span class="line">  cat &lt;&lt;EOF | sudo tee /etc/sysctl.d/k8s.conf</span><br><span class="line">net.bridge.bridge-nf-call-iptables  = 1</span><br><span class="line">net.bridge.bridge-nf-call-ip6tables = 1</span><br><span class="line">net.ipv4.ip_forward                 = 1</span><br><span class="line">EOF</span><br><span class="line">    sysctl --system</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">k8s_install() &#123;</span><br><span class="line">    kubeadm init --pod-network-cidr=10.244.0.0/16 --image-repository=registry.aliyuncs.com/google_containers --node-name k8s-master01</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">k8s_post() &#123;</span><br><span class="line">    mkdir -p /root/.kube</span><br><span class="line">    cp -a /etc/kubernetes/admin.conf /root/.kube/config</span><br><span class="line">    kubectl taint node k8s-master01 node-role.kubernetes.io/control-plane-</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">install_flannel() &#123;</span><br><span class="line">    wget https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml</span><br><span class="line">    kubectl apply -f kube-flannel.yml</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">init() &#123;</span><br><span class="line">    init_repo</span><br><span class="line">    install_pkg</span><br><span class="line">    crictl_init</span><br><span class="line">    disable_swap</span><br><span class="line">    service_onboot</span><br><span class="line">    init_containerd</span><br><span class="line">    init_sysctl</span><br><span class="line">    init_etchosts</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">install() &#123;</span><br><span class="line">    k8s_install</span><br><span class="line">    k8s_post</span><br><span class="line">    install_flannel</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">main() &#123;</span><br><span class="line">    init</span><br><span class="line">    install</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">main</span><br></pre></td></tr></table></figure>
+
+<p>  填入文件 k8s_install.sh，直接执行脚本即可完成安装。执行 bash k8s_install.sh，就会自动创建出一个单节点的。</p>
+<p>  目前实现的非常简单，不考虑任何变化，逻辑判断也比较宽松，后续变动继续在 orca-tools 维护。</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://example.com/2024/01/16/kubernetes%20%E5%8D%95%E8%8A%82%E7%82%B9%E5%BF%AB%E9%80%9F%E5%AE%89%E8%A3%85/" data-id="clrr73sh90000a8urfic0den7" data-title="Kubernetes 快速拉起单节点集群" class="article-share-link"><span class="fa fa-share">Share</span></a>
+      
+      
+      
+  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/K8S/" rel="tag">K8S</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+
+  
+    <article id="post-Node NotReady 排查指引" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
+  <div class="article-meta">
+    <a href="/2020/11/16/Node%20NotReady%20%E6%8E%92%E6%9F%A5%E6%8C%87%E5%BC%95/" class="article-date">
+  <time class="dt-published" datetime="2020-11-16T10:11:25.000Z" itemprop="datePublished">2020-11-16</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="p-name article-title" href="/2020/11/16/Node%20NotReady%20%E6%8E%92%E6%9F%A5%E6%8C%87%E5%BC%95/">Node NotReady 排查指引</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="e-content article-entry" itemprop="articleBody">
+      
+        <h1 id="Kubernetes-Node-NotReady-排查指引"><a href="#Kubernetes-Node-NotReady-排查指引" class="headerlink" title="Kubernetes Node NotReady 排查指引"></a>Kubernetes Node NotReady 排查指引</h1><h2 id="基本概念"><a href="#基本概念" class="headerlink" title="基本概念"></a>基本概念</h2><h3 id="Node"><a href="#Node" class="headerlink" title="Node"></a>Node</h3><p>  Kubernetes 对节点的定义是，接受来自控制平面的管理，运行 Pod （业务容器组）来执行工作负载，完成工作。节点可以是虚拟机或者物理机。Kubernetes 的集群由若干个节点组成。</p>
+<p>  节点又分为 Master 和 Worker，Master 节点上运行着管控组件，如控制器，调度器等等。 Worker 节点则运行着集群的业务应用。</p>
+<p>  Node 上的核心组件为 kubelet、container runtime、kube-proxy。</p>
+<h3 id="Kubelet"><a href="#Kubelet" class="headerlink" title="Kubelet"></a>Kubelet</h3><p>  负责维护 Pod 的生命周期（创建&#x2F;启动&#x2F;监控&#x2F;重启&#x2F;销毁等），Kubelet 用于来确保各个 Pod 在 Node 上运行的状态符合预期。Master 通过 Kubelet 来发布指示，从而管理各个 Worker。</p>
+<p>  Kubelet 不管理非 Kubernetes 集群创建的容器。</p>
+<h3 id="container-runtime"><a href="#container-runtime" class="headerlink" title="container runtime"></a>container runtime</h3><p>  实际上提供运行容器能力的软件，kubelet 通过调用 container runtime 来完成容器的生命周期管理工作。常见的 container runtime 有 containerd，cri-o，docker等等。</p>
+<h2 id="节点NotReady-的排查思路"><a href="#节点NotReady-的排查思路" class="headerlink" title="节点NotReady 的排查思路"></a>节点NotReady 的排查思路</h2><h3 id="如何诊断-K8S-集群是否出现节点-NotReady-或者驱逐的情况"><a href="#如何诊断-K8S-集群是否出现节点-NotReady-或者驱逐的情况" class="headerlink" title="如何诊断 K8S 集群是否出现节点 NotReady 或者驱逐的情况"></a>如何诊断 K8S 集群是否出现节点 NotReady 或者驱逐的情况</h3><p>  可以从两方面入手，一个是观察当前集群的 Pod 状态，另一个是节点状态。</p>
+<p>  当某节点状态切换为 NotReady 以后，该状态维持超过 5 分钟时，会对该节点的 Pod 进行驱逐动作。除了节点 NotReady之外，如果节点因为磁盘空间、内存不足等原因也会导致出现 Pod 驱逐的情况。此时可以看到 Evicted状态的 Pod。</p>
+<h3 id="收集节点-NotReady-的原因"><a href="#收集节点-NotReady-的原因" class="headerlink" title="收集节点 NotReady 的原因"></a>收集节点 NotReady 的原因</h3><h4 id="1-通过-kubectl-describe-node-获取-Node-的状态"><a href="#1-通过-kubectl-describe-node-获取-Node-的状态" class="headerlink" title="1. 通过 kubectl describe node 获取 Node 的状态"></a>1. 通过 kubectl describe node 获取 Node 的状态</h4><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">[root@tke-192-168-0-7 pki]# kubectl describe node 192.168.0.13 | grep -i -A10 Conditions</span><br><span class="line">Conditions:</span><br><span class="line">  Type             Status  LastHeartbeatTime                 LastTransitionTime                Reason                       Message</span><br><span class="line">  ----             ------  -----------------                 ------------------                ------                       -------</span><br><span class="line">  MemoryPressure   False   Wed, 21 Apr 2021 14:50:38 +0800   Tue, 16 Mar 2021 14:14:33 +0800   KubeletHasSufficientMemory   kubelet has sufficient memory available</span><br><span class="line">  DiskPressure     False   Wed, 21 Apr 2021 14:50:38 +0800   Sun, 04 Apr 2021 21:48:01 +0800   KubeletHasNoDiskPressure     kubelet has no disk pressure</span><br><span class="line">  PIDPressure      False   Wed, 21 Apr 2021 14:50:38 +0800   Tue, 16 Mar 2021 14:14:33 +0800   KubeletHasSufficientPID      kubelet has sufficient PID available</span><br><span class="line">  Ready            True    Wed, 21 Apr 2021 14:50:38 +0800   Wed, 17 Mar 2021 14:15:14 +0800   KubeletReady                 kubelet is posting ready status</span><br></pre></td></tr></table></figure>
+
+<p>  通过 describe 查询 Conditions 字段能够比较快速的获取到 NotReady 的原因，在 Ready 这一行通常会告诉我们状态为 False 的原因是什么。对节点 NotReady 问题处理时，可以先通过该方法迅速获取 NotReady 的起因。</p>
+<p>  对于出现复杂 NotReady 的场景，光通过 describe node 的方法可能并不能完全确认原因。此时我们还会借助其他手段获取信息。通用的排查方法即是查询 kubelet 相关的日志信息。</p>
+<h4 id="2-查询-kubelet-日志"><a href="#2-查询-kubelet-日志" class="headerlink" title="2. 查询 kubelet 日志"></a>2. 查询 kubelet 日志</h4><p>  通过  journalctl -u kubelet 可以获取最新的 kubelet 的日志。查询 kubelet 日志能够得到更加细致的错误信息。便于我们定位问题。下面是一些常用的 journalctl 获取日志的方法。</p>
+<h5 id="获取最新的-kubelet-日志"><a href="#获取最新的-kubelet-日志" class="headerlink" title="获取最新的 kubelet 日志"></a>获取最新的 kubelet 日志</h5><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta prompt_"># </span><span class="language-bash">-r 参数相当于倒排，优先显示最新的日志信息。</span></span><br><span class="line">journalctl -u kubelet -r</span><br></pre></td></tr></table></figure>
+
+<h5 id="获取最近一个小时的-kubelet-日志"><a href="#获取最近一个小时的-kubelet-日志" class="headerlink" title="获取最近一个小时的 kubelet 日志"></a>获取最近一个小时的 kubelet 日志</h5><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">journalctl -u kubelet --since &quot;1 hour ago&quot;</span><br></pre></td></tr></table></figure>
+
+<h5 id="获取最近某个时间段的的-kubelet-日志"><a href="#获取最近某个时间段的的-kubelet-日志" class="headerlink" title="获取最近某个时间段的的 kubelet 日志"></a>获取最近某个时间段的的 kubelet 日志</h5><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta prompt_"># </span><span class="language-bash">获取 2021-04-28 的 20:00 到 20:15 之间的 kubelet 日志。</span></span><br><span class="line">journalctl -u kubelet --since &quot;2021-04-28 20:00:00&quot; --until &quot;2021-04-28 20:15:00&quot;</span><br></pre></td></tr></table></figure>
+
+<h4 id="3-查询-message-日志"><a href="#3-查询-message-日志" class="headerlink" title="3. 查询 message 日志"></a>3. 查询 message 日志</h4><p>  kubelet 的输出也打到了 &#x2F;var&#x2F;log&#x2F;messages，我们同样也可以通过分析 message 中的相关错误信息来分析问题。对于曾出现过 NotReady 并且重启过的节点，此时通过可以通过 messages 日志来进行分析。</p>
+<p>  如果涉及到需要将 message 日志拷贝给后端大佬分析的场景，要注意一下 message 文件的大小。在没有做分片转储的场景下，message 日志往往会很大。可以通过如下指令压缩 message 文件再提取出环境，减少传输成本。</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta prompt_"># </span><span class="language-bash">打包压缩 messages 文件</span></span><br><span class="line">tar zcvf messages-$(date +&quot;%Y%m%d-%H%M%S&quot;).tar.gz messages*</span><br></pre></td></tr></table></figure>
+
+<h2 id="常见案例"><a href="#常见案例" class="headerlink" title="常见案例"></a>常见案例</h2><h3 id="节点资源不足"><a href="#节点资源不足" class="headerlink" title="节点资源不足"></a>节点资源不足</h3><h4 id="故障现象"><a href="#故障现象" class="headerlink" title="故障现象"></a>故障现象</h4><p>  通过 <code>kubectl describe node x.x.x.x | grep -A10 Conditions</code> 查询到类似的信息。</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">Conditions:</span><br><span class="line">  Type                 Status  LastHeartbeatTime                 LastTransitionTime                Reason                       Message</span><br><span class="line">  ----                 ------  -----------------                 ------------------                ------                       -------</span><br><span class="line">  NetworkUnavailable   False   Tue, 27 Apr 2021 12:28:53 +0800   Tue, 27 Apr 2021 12:28:53 +0800   FlannelIsUp                  Flannel is running on this node</span><br><span class="line">  MemoryPressure       False   Wed, 28 Apr 2021 23:06:47 +0800   Fri, 23 Apr 2021 01:20:55 +0800   KubeletHasSufficientMemory   kubelet has sufficient memory available</span><br><span class="line">  DiskPressure         True    Wed, 28 Apr 2021 23:06:47 +0800   Wed, 28 Apr 2021 22:41:27 +0800   KubeletHasDiskPressure       kubelet has disk pressure</span><br><span class="line">  PIDPressure          False   Wed, 28 Apr 2021 23:06:47 +0800   Fri, 23 Apr 2021 01:20:55 +0800   KubeletHasSufficientPID      kubelet has sufficient PID available</span><br><span class="line">  Ready                True    Wed, 28 Apr 2021 23:06:47 +0800   Fri, 23 Apr 2021 01:25:30 +0800   KubeletReady                 kubelet is posting ready status</span><br></pre></td></tr></table></figure>
+
+<p>  Type 字段中，如果 DiskPress 的 Status 为 True 时，则代表节点的磁盘空间不足。默认情况下 kubelet </p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">Events:</span><br><span class="line">  Type     Reason                Age                    From     Message</span><br><span class="line">  ----     ------                ----                   ----     -------</span><br><span class="line">  Normal   NodeHasDiskPressure   53m                    kubelet  Node k8s-master01 status is now: NodeHasDiskPressure</span><br><span class="line">  Warning  FreeDiskSpaceFailed   53m                    kubelet  failed to garbage collect required amount of images. Wanted to free 2108570828 bytes, but freed 0 bytes</span><br><span class="line">  Warning  EvictionThresholdMet  3m53s (x296 over 53m)  kubelet  Attempting to reclaim ephemeral-storage</span><br></pre></td></tr></table></figure>
+
+<h4 id="触发原因"><a href="#触发原因" class="headerlink" title="触发原因"></a>触发原因</h4><p>  通常是节点的某一项指标（如内存、磁盘空间、PID等等）的使用率超出阈值引起的。可以根据 <code>MemoryPressure</code>、<code>DiskPressure</code> 、<code>PIDPressure</code> 的状态是否为 True 来进一步排查原因。</p>
+<p>  各指标的阈值默认如下</p>
+<ul>
+<li>memory.available&lt;100Mi</li>
+<li>nodefs.available&lt;10%</li>
+<li>nodefs.inodesFree&lt;5％</li>
+<li>imagefs.available&lt;15%</li>
+</ul>
+<h4 id="排查方法"><a href="#排查方法" class="headerlink" title="排查方法"></a>排查方法</h4><p>  如果是 DiskPressure 状态为 true 的场景，通常可能是根文件系统、镜像文件系统资源不足引起的，请检查各个磁盘当前空间、i节点的使用率。通常可以用如下方法获取信息</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta prompt_"># </span><span class="language-bash">获取块设备挂载情况</span></span><br><span class="line">[192.168.122.101 ~ ]# lsblk</span><br><span class="line">NAME            MAJ:MIN RM  SIZE RO TYPE MOUNTPOINT</span><br><span class="line">sr0              11:0    1 1024M  0 rom</span><br><span class="line">vda             252:0    0   20G  0 disk</span><br><span class="line">├─vda2          252:2    0   19G  0 part</span><br><span class="line">│ ├─centos-swap 253:1    0    2G  0 lvm</span><br><span class="line">│ └─centos-root 253:0    0   17G  0 lvm  /</span><br><span class="line">└─vda1          252:1    0    1G  0 part /boot</span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">获取目录挂载磁盘空间使用情况</span></span><br><span class="line">[192.168.122.101 ~ ]# df -lh /</span><br><span class="line">Filesystem               Size  Used Avail Use% Mounted on</span><br><span class="line">/dev/mapper/centos-root   17G  3.2G   14G  19% /</span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">获取目录挂载磁盘i节点使用情况</span></span><br><span class="line">[192.168.122.101 ~ ]# df -iH /</span><br><span class="line">Filesystem              Inodes IUsed IFree IUse% Mounted on</span><br><span class="line">/dev/mapper/centos-root   3.2M   42k  3.1M    2% /</span><br></pre></td></tr></table></figure>
+
+<p>  如果是 MemoryPressure 状态为 true 的场景，通常是节点的内存可用量不足导致的，可以通过如下方法获取信息</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta prompt_"># </span><span class="language-bash">获取节点内存使用率</span></span><br><span class="line">free -g</span><br></pre></td></tr></table></figure>
+
+<p>  如果是 PidPressure 状态为 true 的场景，可能是当前节点的 PID 数量很接近 &#x2F;proc&#x2F;sys&#x2F;kernel&#x2F;pid_max 中给出的值，可以根据如下方法获取信息确认。</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta prompt_"># </span><span class="language-bash">获取当前节点 pid 最大值</span></span><br><span class="line">cat /proc/sys/kernel/pid_max</span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">获取当前节点 PID 数量</span></span><br><span class="line">ps -ef | wc -l </span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>节点资源不足，不会将节点配置为 NotReady，但节点上的 Pod 会驱逐，该类问题也需要重点关注。</p>
+</blockquote>
+<h3 id="Kubelet（golang）BUG"><a href="#Kubelet（golang）BUG" class="headerlink" title="Kubelet（golang）BUG"></a>Kubelet（golang）BUG</h3><h4 id="故障现象-1"><a href="#故障现象-1" class="headerlink" title="故障现象"></a>故障现象</h4><p>   节点状态变为 NotReady</p>
+<p>   通过 <code>kubectl describe node x.x.x.x | grep -A10 Conditions</code> 查询，LastHeartbeatTime、LastTransitionTime的状态近期再没有更新过数据。</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">Conditions:</span><br><span class="line">  Type                 Status    LastHeartbeatTime                 LastTransitionTime                Reason              Message</span><br><span class="line">  ----                 ------    -----------------                 ------------------                ------              -------</span><br><span class="line">  NetworkUnavailable   False     Thu, 06 May 2021 10:24:38 +0800   Thu, 06 May 2021 10:24:38 +0800   FlannelIsUp         Flannel is running on this node</span><br><span class="line">  MemoryPressure       Unknown   Thu, 06 May 2021 13:40:00 +0800   Thu, 06 May 2021 13:41:35 +0800   NodeStatusUnknown   Kubelet stopped posting node status.</span><br><span class="line">  DiskPressure         Unknown   Thu, 06 May 2021 13:40:00 +0800   Thu, 06 May 2021 13:41:35 +0800   NodeStatusUnknown   Kubelet stopped posting node status.</span><br><span class="line">  PIDPressure          Unknown   Thu, 06 May 2021 13:40:00 +0800   Thu, 06 May 2021 13:41:35 +0800   NodeStatusUnknown   Kubelet stopped posting node status.</span><br><span class="line">  Ready                Unknown   Thu, 06 May 2021 13:40:00 +0800   Thu, 06 May 2021 13:41:35 +0800   NodeStatusUnknown   Kubelet stopped posting node status.</span><br></pre></td></tr></table></figure>
+
+<h4 id="触发原因-1"><a href="#触发原因-1" class="headerlink" title="触发原因"></a>触发原因</h4><p>​    该问题是社区的一个 BUG，节点概率性会触发，一旦触发该 BUG 会导致节点无法更新状态。最终导致节点被置为 NotReady。</p>
+<h4 id="排查方法-1"><a href="#排查方法-1" class="headerlink" title="排查方法"></a>排查方法</h4><p>  方法一：通过 journalctl 查询 kubelet 日志的是否存在关键字</p>
+<p>  方法二：通过查看 messages 日志，过滤相关关键字判断</p>
+<p>​    <code>grep -i &quot;use of closed network connection&quot; /var/log/messages</code></p>
+<p>  该问题目前在社区的 kubernetes 1.18 版本得到了解决，TKE 3.4.X 版本默认修复了这个问题。在 TKE 3.0.4 通过配置检测脚本来自动重启 kubelet 修复。对于 TKE 3.0.4 之前的版本，可以参考如下链接进行临时规避修复：</p>
+<p><a target="_blank" rel="noopener" href="https://gdc.lexiangla.com/teams/k100044/docs/c2b199b4780f11ebaee046cd73dfa810?company_from=gdc">https://gdc.lexiangla.com/teams/k100044/docs/c2b199b4780f11ebaee046cd73dfa810?company_from=gdc</a></p>
+<h3 id="PLEG-检测失败"><a href="#PLEG-检测失败" class="headerlink" title="PLEG 检测失败"></a>PLEG 检测失败</h3><h4 id="故障现象-2"><a href="#故障现象-2" class="headerlink" title="故障现象"></a>故障现象</h4><p>  如果节点出现了 PLEG 超时的问题，可以观察到这个节点它的 Ready、NotReady 状态的切换会很频繁，处于一个不稳定的状态。</p>
+<p>  通过 <code>kubectl describe node x.x.x.x | grep -A10 Conditions</code> 查询到类似的信息。</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">Conditions:</span><br><span class="line">  Type                 Status  LastHeartbeatTime                 LastTransitionTime                Reason                       Message</span><br><span class="line">  ----                 ------  -----------------                 ------------------                ------                       -------</span><br><span class="line">  NetworkUnavailable   False   Tue, 27 Apr 2021 12:28:53 +0800   Tue, 27 Apr 2021 12:28:53 +0800   FlannelIsUp                  Flannel is running on this node</span><br><span class="line">  MemoryPressure       False   Wed, 28 Apr 2021 23:06:47 +0800   Fri, 23 Apr 2021 01:20:55 +0800   KubeletHasSufficientMemory   kubelet has sufficient memory available</span><br><span class="line">  DiskPressure         True    Wed, 28 Apr 2021 23:06:47 +0800   Wed, 28 Apr 2021 22:41:27 +0800   KubeletHasDiskPressure       kubelet has disk pressure</span><br><span class="line">  PIDPressure          False   Wed, 28 Apr 2021 23:06:47 +0800   Fri, 23 Apr 2021 01:20:55 +0800   KubeletHasSufficientPID      kubelet has sufficient PID available</span><br><span class="line">  Ready                False   Wed, 28 Apr 2021 23:06:47 +0800   Sun, 06 Dec 2020 18:49:40 +0100   KubeletNotReady              PLEG is not healthy: pleg was last seen active 10m18.040734348s ago; threshold is 3m0s</span><br></pre></td></tr></table></figure>
+
+<h4 id="触发原因-2"><a href="#触发原因-2" class="headerlink" title="触发原因"></a>触发原因</h4><p>  PLEG 是 Pod Lifecycle Event Generator（Pod 生命周期事件生成器），它用来周期性收集节点上各个 Pod 的状态，并将 Pod 状态写入到缓存中。让控制器能够根据最新 Pod 的状态进行控制。</p>
+<p>  在周期性的 relist（收集容器状态信息）的操作中，如果超出了默认预定的事件阈值（默认 3 分钟），就会触发事件，将 Node 状态切换为 NotReady。</p>
+<p>  我们可以简单的理解 relist 的动作就是 docker ps 列出所有容器，再进一步 inspect 这些容器的信息。</p>
+<p>  可能导致 relist 超出 3 分钟的原因如下：</p>
+<ul>
+<li>节点上运行了大量的 Pod，导致 relist 收集超时。</li>
+<li>节点的负载较高，性能不足，导致 relist 收集超时。</li>
+<li>有部分容器处于 Dead 或者其他状态（如，长时间Create），阻塞 inspect。</li>
+</ul>
+<h4 id="排查方法-2"><a href="#排查方法-2" class="headerlink" title="排查方法"></a>排查方法</h4><p>  <strong>原因1 节点上运行了大量的 Pod，导致 relist 收集超时。</strong></p>
+<p>​    确认该节点的 Pod 运行数量，以及容器数量</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta prompt_"># </span><span class="language-bash">获取 Pod 数量</span></span><br><span class="line">kubectl get pod -o wide -A | grep -i 节点IP（名称） | wc -l</span><br><span class="line"><span class="meta prompt_"></span></span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">获取 Pod 数量，更简洁的方法</span></span><br><span class="line">kubectl describe node 节点名称 | grep -i Non-terminated</span><br><span class="line"><span class="meta prompt_"></span></span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">获取容器数量</span></span><br><span class="line">docker ps -a | wc -l</span><br></pre></td></tr></table></figure>
+
+<p>  <strong>原因2 节点负载较高，性能不足，导致 relist 收集超时。</strong></p>
+<p>​    可以通过判断该节点的负载来确认，通过 top 等指令确认 CPU、内存、IO等负载情况。可以关注一下 wa 的值。如果 wa 值比较大，再通过 iostat 进一步获取 IO 数据。</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta prompt_"># </span><span class="language-bash">top</span></span><br><span class="line">[192.168.7.221 ~ ]# top</span><br><span class="line">top - 14:15:51 up  3:55,  1 user,  load average: 1.41, 0.99, 0.91</span><br><span class="line">Tasks: 348 total,   1 running, 347 sleeping,   0 stopped,   0 zombie</span><br><span class="line"><span class="meta prompt_">%</span><span class="language-bash">Cpu(s):  2.6 us,  1.2 sy,  0.0 ni, 96.2 <span class="built_in">id</span>,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st</span></span><br><span class="line">KiB Mem : 74012144 total, 35444780 free, 17865776 used, 20701592 buff/cache</span><br><span class="line">KiB Swap: 10485760+total, 10485760+free,        0 used. 55667436 avail Mem</span><br><span class="line"></span><br><span class="line">  PID USER      PR  NI    VIRT    RES    SHR S  %CPU %MEM     TIME+ COMMAND</span><br><span class="line"> 1880 root      20   0 5479028   2.2g  11216 S  31.2  3.1  86:37.15 qemu-kvm</span><br><span class="line"> 1904 root      20   0 5360192   2.2g  11236 S  18.8  3.2  75:41.94 qemu-kvm</span><br><span class="line">16146 root      20   0 5040564   2.3g  11212 S  18.8  3.3   5:59.33 qemu-kvm</span><br><span class="line"><span class="meta prompt_"></span></span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">iostat</span></span><br><span class="line">[192.168.7.221 ~ ]# iostat -x</span><br><span class="line">Linux 3.10.0-1160.24.1.el7.x86_64 (localhost.localdomain)       05/06/2021      _x86_64_        (24 CPU)</span><br><span class="line"></span><br><span class="line">avg-cpu:  %user   %nice %system %iowait  %steal   %idle</span><br><span class="line">           3.65    0.00    1.37    0.16    0.00   94.82</span><br><span class="line"></span><br><span class="line">Device:         rrqm/s   wrqm/s     r/s     w/s    rkB/s    wkB/s avgrq-sz avgqu-sz   await r_await w_await  svctm  %util</span><br><span class="line">sda               0.00     0.07    0.39    0.45    14.76     3.83    44.06     0.00    4.66    9.51    0.39   0.85   0.07</span><br><span class="line">sdb               0.00     0.01    6.49  107.14   442.68  1295.89    30.60     0.30    2.68   12.67    2.08   0.12   1.41</span><br><span class="line">dm-0              0.00     0.00    6.49  107.15   442.64  1296.16    30.60     0.31    2.69   12.68    2.09   0.13   1.43</span><br></pre></td></tr></table></figure>
+
+<p>  <strong>原因3 有部分容器处于 Dead 或者其他状态（如，长时间Create）阻塞 inspect。</strong></p>
+<p>​    可以通过复现 relist 的行为，来判断卡点，我们可以从 docker ps + docker inspect 执行的来判断是否有阻塞的容器，进一步获取信息。</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta prompt_"># </span><span class="language-bash">到触发了 PLEG 超时的节点上执行如下操作</span></span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">收集是否有卡死的容器</span></span><br><span class="line">for c in $(docker ps -aq); do echo $c; docker inspect $c 1&gt;/dev/null 2&gt;&amp;1; done</span><br><span class="line"><span class="meta prompt_"></span></span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">进一步查看卡死容器的状态，此处 cid 是上一条命令执行获取到的数据。</span></span><br><span class="line">docker ps -a | grep $cid</span><br><span class="line"><span class="meta prompt_"></span></span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">如果状态是 Dead，通过 docker <span class="built_in">rm</span> -f <span class="variable">$cid</span> 来进行处理</span></span><br><span class="line">docker rm -f $cid</span><br><span class="line"><span class="meta prompt_"></span></span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">如果状态是 Create，收集 stack 信息，提供给后端同学进一步分析问题</span></span><br><span class="line">cat /proc/PID/stack</span><br><span class="line"><span class="meta prompt_"></span></span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">另外可以收集一下 dmesg 是否存在相关的内核错误信息。</span></span><br><span class="line">dmesg -T</span><br></pre></td></tr></table></figure>
+
+<p>​    如果在 dmesg 等看到了 XFS 分配内存失败的相关错误信息，还请收集如下信息</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta prompt_"># </span><span class="language-bash">获取内核版本，注意低于 3.10.1062 的内核版本存在 XFS 碎片的 BUG。</span></span><br><span class="line">uname -r </span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">查询内存碎片</span></span><br><span class="line">cat /proc/buddyinfo</span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">获取 XFS 版本</span></span><br><span class="line">xfs_info</span><br></pre></td></tr></table></figure>
+
+<h3 id="Container-Runtime-故障"><a href="#Container-Runtime-故障" class="headerlink" title="Container Runtime 故障"></a>Container Runtime 故障</h3><h4 id="故障现象-3"><a href="#故障现象-3" class="headerlink" title="故障现象"></a>故障现象</h4><p>  通过 <code>kubectl describe node x.x.x.x | grep -A10 Conditions</code> 查询到类似的信息。</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">Conditions:</span><br><span class="line">  Type                 Status  LastHeartbeatTime                 LastTransitionTime                Reason                       Message</span><br><span class="line">  ----                 ------  -----------------                 ------------------                ------                       -------</span><br><span class="line">  NetworkUnavailable   False   Thu, 06 May 2021 10:23:35 +0800   Thu, 06 May 2021 10:23:35 +0800   FlannelIsUp                  Flannel is running on this node</span><br><span class="line">  MemoryPressure       False   Thu, 06 May 2021 13:29:26 +0800   Thu, 06 May 2021 09:57:18 +0800   KubeletHasSufficientMemory   kubelet has sufficient memory available</span><br><span class="line">  DiskPressure         False   Thu, 06 May 2021 13:29:26 +0800   Thu, 06 May 2021 09:57:18 +0800   KubeletHasNoDiskPressure     kubelet has no disk pressure</span><br><span class="line">  PIDPressure          False   Thu, 06 May 2021 13:29:26 +0800   Thu, 06 May 2021 09:57:18 +0800   KubeletHasSufficientPID      kubelet has sufficient PID available</span><br><span class="line">  Ready                False   Thu, 06 May 2021 13:29:26 +0800   Thu, 06 May 2021 13:28:55 +0800   KubeletNotReady              [container runtime is down, container runtime not ready: RuntimeReady=false reason:DockerDaemonNotReady message:docker: failed to get docker version: Cannot connect to the Docker daemon at unix:///var/run/docker.sock. Is the docker daemon running?]</span><br></pre></td></tr></table></figure>
+
+<h4 id="触发原因-3"><a href="#触发原因-3" class="headerlink" title="触发原因"></a>触发原因</h4><p>  通过 Conditions 中的 KubeletNotReady Reason 可以得知，这是因为连接 docker 失败导致的。</p>
+<h4 id="排查方法-3"><a href="#排查方法-3" class="headerlink" title="排查方法"></a>排查方法</h4><p>​    获取 docker 状态是否为 Running，如果不是 Running，收集 docker 的日志来进一步排查，同时也可以尝试手动拉起修复 docker。</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta prompt_"># </span><span class="language-bash">查询 docker 运行状态</span></span><br><span class="line">systemctl status docker</span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">收集 docker 日志</span></span><br><span class="line">journalctl -u docker &gt; docker-$(date +&quot;%Y%m%d-%H%M%S&quot;).log</span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">手动启动 docker</span></span><br><span class="line">systemctl start docker</span><br></pre></td></tr></table></figure>
+
+<h3 id="节点网络不通"><a href="#节点网络不通" class="headerlink" title="节点网络不通"></a>节点网络不通</h3><h4 id="故障现象-4"><a href="#故障现象-4" class="headerlink" title="故障现象"></a>故障现象</h4><p>   通过 <code>kubectl describe node x.x.x.x | grep -A10 Conditions</code> 查询，LastHeartbeatTime、LastTransitionTime的状态近期再没有更新过数据。</p>
+<p>   因为节点与控制器之间的网络不通，状态无法上报给控制器，这个时候 describe 出的结果和 kubelet(golang) BUG 触发的现象类似。</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">Conditions:</span><br><span class="line">  Type                 Status    LastHeartbeatTime                 LastTransitionTime                Reason              Message</span><br><span class="line">  ----                 ------    -----------------                 ------------------                ------              -------</span><br><span class="line">  NetworkUnavailable   False     Thu, 06 May 2021 10:24:38 +0800   Thu, 06 May 2021 10:24:38 +0800   FlannelIsUp         Flannel is running on this node</span><br><span class="line">  MemoryPressure       Unknown   Thu, 06 May 2021 13:40:00 +0800   Thu, 06 May 2021 13:41:35 +0800   NodeStatusUnknown   Kubelet stopped posting node status.</span><br><span class="line">  DiskPressure         Unknown   Thu, 06 May 2021 13:40:00 +0800   Thu, 06 May 2021 13:41:35 +0800   NodeStatusUnknown   Kubelet stopped posting node status.</span><br><span class="line">  PIDPressure          Unknown   Thu, 06 May 2021 13:40:00 +0800   Thu, 06 May 2021 13:41:35 +0800   NodeStatusUnknown   Kubelet stopped posting node status.</span><br><span class="line">  Ready                Unknown   Thu, 06 May 2021 13:40:00 +0800   Thu, 06 May 2021 13:41:35 +0800   NodeStatusUnknown   Kubelet stopped posting node status.</span><br></pre></td></tr></table></figure>
+
+<h4 id="触发原因-4"><a href="#触发原因-4" class="headerlink" title="触发原因"></a>触发原因</h4><p>  可能是节点下线或者因为其他原因导致网络阻塞，节点无法与控制器正常通信。</p>
+<h4 id="排查方法-4"><a href="#排查方法-4" class="headerlink" title="排查方法"></a>排查方法</h4><p>  确认目标节点是否存活，如果存活的话，进一步测试该节点与其他节点之间的连通性。是否有可能是防火墙或者其他因素阻塞了连通性。</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta prompt_"># </span><span class="language-bash">确认目标节点是否存活</span></span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">在其他节点执行如下操作</span></span><br><span class="line">ping 目标节点IP</span><br><span class="line">ssh 目标节点IP</span><br><span class="line"><span class="meta prompt_"></span></span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">如果目标节点存活，进一步排查它与其他节点之间的连通性。</span></span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">登录到目标节点执行如下操作</span></span><br><span class="line">ping 其他节点地址</span><br><span class="line">curl apiserver:6443</span><br></pre></td></tr></table></figure>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://example.com/2020/11/16/Node%20NotReady%20%E6%8E%92%E6%9F%A5%E6%8C%87%E5%BC%95/" data-id="clrr6ugd00001tkur4c055bc6" data-title="Node NotReady 排查指引" class="article-share-link"><span class="fa fa-share">Share</span></a>
+      
+      
+      
+  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/K8S/" rel="tag">K8S</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+
+  
+
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tags</h3>
+    <div class="widget">
+      <ul class="tag-list" itemprop="keywords"><li class="tag-list-item"><a class="tag-list-link" href="/tags/K8S/" rel="tag">K8S</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%B7%A5%E5%85%B7/" rel="tag">工具</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tag Cloud</h3>
+    <div class="widget tagcloud">
+      <a href="/tags/K8S/" style="font-size: 20px;">K8S</a> <a href="/tags/%E5%B7%A5%E5%85%B7/" style="font-size: 10px;">工具</a>
+    </div>
+  </div>
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Archives</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2024/01/">January 2024</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/11/">November 2020</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Recent Posts</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2024/01/23/kubectl%20logs%20%E6%97%A5%E5%BF%97%E9%87%87%E9%9B%86%E5%B7%A5%E5%85%B7/">基于资源对应 pod 批量执行 kubectl logs 采集工具</a>
+          </li>
+        
+          <li>
+            <a href="/2024/01/16/kubernetes%20%E5%8D%95%E8%8A%82%E7%82%B9%E5%BF%AB%E9%80%9F%E5%AE%89%E8%A3%85/">Kubernetes 快速拉起单节点集群</a>
+          </li>
+        
+          <li>
+            <a href="/2020/11/16/Node%20NotReady%20%E6%8E%92%E6%9F%A5%E6%8C%87%E5%BC%95/">Node NotReady 排查指引</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      
+      &copy; 2024 guoltan<br>
+      Powered by <a href="https://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+
+
+<script src="/js/jquery-3.6.4.min.js"></script>
+
+
+
+  
+<script src="/fancybox/jquery.fancybox.min.js"></script>
+
+
+
+
+<script src="/js/script.js"></script>
+
+
+
+
+
+  </div>
+</body>
+</html>
