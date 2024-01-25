@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  
+  <title>chrony主机时钟同步 | guoltan个人博客</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta name="description" content="安装 chrony  1yum -y install chrony   配置 chrony  12345678vi &#x2F;etc&#x2F;chrony.conf# 找到 server 区块，全注释，替换为 aliyun 时钟源server ntp1.aliyun.com iburstserver ntp2.aliyun.com iburstserver ntp3.aliyun.com iburstserve">
+<meta property="og:type" content="article">
+<meta property="og:title" content="chrony主机时钟同步">
+<meta property="og:url" content="https://guoltan.github.io/2020/09/25/chrony%E4%B8%BB%E6%9C%BA%E6%97%B6%E9%92%9F%E5%90%8C%E6%AD%A5/index.html">
+<meta property="og:site_name" content="guoltan个人博客">
+<meta property="og:description" content="安装 chrony  1yum -y install chrony   配置 chrony  12345678vi &#x2F;etc&#x2F;chrony.conf# 找到 server 区块，全注释，替换为 aliyun 时钟源server ntp1.aliyun.com iburstserver ntp2.aliyun.com iburstserver ntp3.aliyun.com iburstserve">
+<meta property="og:locale" content="en_US">
+<meta property="article:published_time" content="2020-09-25T10:00:25.000Z">
+<meta property="article:modified_time" content="2024-01-25T14:23:23.399Z">
+<meta property="article:author" content="guoltan">
+<meta property="article:tag" content="NTP">
+<meta name="twitter:card" content="summary">
+  
+    <link rel="alternate" href="/atom.xml" title="guoltan个人博客" type="application/atom+xml">
+  
+  
+    <link rel="shortcut icon" href="/favicon.png">
+  
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+  
+    
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.min.css">
+
+  
+  
+<meta name="generator" content="Hexo 7.1.1"></head>
+
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">guoltan个人博客</a>
+      </h1>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"><span class="fa fa-bars"></span></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+        
+          <a class="nav-icon" href="/atom.xml" title="RSS Feed"><span class="fa fa-rss"></span></a>
+        
+        <a class="nav-icon nav-search-btn" title="Search"><span class="fa fa-search"></span></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="https://guoltan.github.io"></form>
+      </div>
+    </div>
+  </div>
+</header>
+
+      <div class="outer">
+        <section id="main"><article id="post-chrony主机时钟同步" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
+  <div class="article-meta">
+    <a href="/2020/09/25/chrony%E4%B8%BB%E6%9C%BA%E6%97%B6%E9%92%9F%E5%90%8C%E6%AD%A5/" class="article-date">
+  <time class="dt-published" datetime="2020-09-25T10:00:25.000Z" itemprop="datePublished">2020-09-25</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="p-name article-title" itemprop="headline name">
+      chrony主机时钟同步
+    </h1>
+  
+
+      </header>
+    
+    <div class="e-content article-entry" itemprop="articleBody">
+      
+        <ol>
+<li>安装 chrony</li>
+</ol>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">yum -y install chrony</span><br></pre></td></tr></table></figure>
+
+<ol start="2">
+<li>配置 chrony</li>
+</ol>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">vi /etc/chrony.conf</span><br><span class="line"><span class="meta prompt_"></span></span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">找到 server 区块，全注释，替换为 aliyun 时钟源</span></span><br><span class="line"></span><br><span class="line">server ntp1.aliyun.com iburst</span><br><span class="line">server ntp2.aliyun.com iburst</span><br><span class="line">server ntp3.aliyun.com iburst</span><br><span class="line">server ntp4.aliyun.com iburst</span><br></pre></td></tr></table></figure>
+
+<ol start="3">
+<li>启动 chrony 并设置开机自启动</li>
+</ol>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">systemctl enable chronyd</span><br><span class="line">systemctl start chronyd</span><br></pre></td></tr></table></figure>
+
+<ol start="4">
+<li>修改时区、查看时区</li>
+</ol>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta prompt_"># </span><span class="language-bash">设置时区为上海</span></span><br><span class="line">timedatectl set-timezone Asia/Shanghai</span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">查看当前时区和时钟同步情况</span></span><br><span class="line">timedatectl status</span><br></pre></td></tr></table></figure>
+
+<ol start="5">
+<li>配置硬件时钟和系统时钟一致</li>
+</ol>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta prompt_"># </span><span class="language-bash">如果是配置系统时钟和硬件时钟保持一致，则可以使用 -s 参数</span></span><br><span class="line">hwclock -w</span><br></pre></td></tr></table></figure>
+
+<ol start="6">
+<li>chronyc 运维指令</li>
+</ol>
+<p><strong>查看当前机器同步的 ntp 服务器</strong></p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">chronyc sources -v</span><br></pre></td></tr></table></figure>
+
+<p>  示例输出：</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">[root@cloud-master01 kube-prometheus]# chronyc sources -v</span><br><span class="line">210 Number of sources = 1</span><br><span class="line"></span><br><span class="line">  .-- Source mode  &#x27;^&#x27; = server, &#x27;=&#x27; = peer, &#x27;#&#x27; = local clock.</span><br><span class="line"> / .- Source state &#x27;*&#x27; = current synced, &#x27;+&#x27; = combined , &#x27;-&#x27; = not combined,</span><br><span class="line">| /   &#x27;?&#x27; = unreachable, &#x27;x&#x27; = time may be in error, &#x27;~&#x27; = time too variable.</span><br><span class="line">||                                                 .- xxxx [ yyyy ] +/- zzzz</span><br><span class="line">||      Reachability register (octal) -.           |  xxxx = adjusted offset,</span><br><span class="line">||      Log2(Polling interval) --.      |          |  yyyy = measured offset,</span><br><span class="line">||                                \     |          |  zzzz = estimated error.</span><br><span class="line">||                                 |    |           \</span><br><span class="line">MS Name/IP address         Stratum Poll Reach LastRx Last sample</span><br><span class="line">===============================================================================</span><br><span class="line">^* 120.25.115.20                 2   6   337    64   -550us[ -759us] +/- 9876us</span><br></pre></td></tr></table></figure>
+
+<p><strong>查看 ntp 服务器状态</strong></p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">chronyc sourcestats -v</span><br></pre></td></tr></table></figure>
+
+<p>  示例输出</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">210 Number of sources = 1</span><br><span class="line">                             .- Number of sample points in measurement set.</span><br><span class="line">                            /    .- Number of residual runs with same sign.</span><br><span class="line">                           |    /    .- Length of measurement set (time).</span><br><span class="line">                           |   |    /      .- Est. clock freq error (ppm).</span><br><span class="line">                           |   |   |      /           .- Est. error in freq.</span><br><span class="line">                           |   |   |     |           /         .- Est. offset.</span><br><span class="line">                           |   |   |     |          |          |   On the -.</span><br><span class="line">                           |   |   |     |          |          |   samples. \</span><br><span class="line">                           |   |   |     |          |          |             |</span><br><span class="line">Name/IP Address            NP  NR  Span  Frequency  Freq Skew  Offset  Std Dev</span><br><span class="line">==============================================================================</span><br><span class="line">120.25.115.20              11   9   525     -0.053      8.843  -6245ns  1074us</span><br></pre></td></tr></table></figure>
+
+<p><strong>查看 ntp 服务器是否在线</strong></p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">chronyc activity -v</span><br></pre></td></tr></table></figure>
+
+<p>  示例输出：</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">[root@cloud-master01 kube-prometheus]# chronyc activity -v</span><br><span class="line">200 OK</span><br><span class="line">1 sources online</span><br><span class="line">0 sources offline</span><br><span class="line">0 sources doing burst (return to online)</span><br><span class="line">0 sources doing burst (return to offline)</span><br><span class="line">0 sources with unknown address</span><br></pre></td></tr></table></figure>
+
+<p><strong>查看 ntp 服务器详细信息</strong></p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">chronyc tracking -v</span><br></pre></td></tr></table></figure>
+
+<p>  示例输出：</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">[root@cloud-master01 kube-prometheus]# chronyc tracking -v</span><br><span class="line">Reference ID    : 78197314 (120.25.115.20)</span><br><span class="line">Stratum         : 3</span><br><span class="line">Ref time (UTC)  : Fri Oct 06 14:40:05 2023</span><br><span class="line">System time     : 0.000293604 seconds fast of NTP time</span><br><span class="line">Last offset     : +0.000001403 seconds</span><br><span class="line">RMS offset      : 0.000997817 seconds</span><br><span class="line">Frequency       : 6.722 ppm fast</span><br><span class="line">Residual freq   : +0.016 ppm</span><br><span class="line">Skew            : 4.444 ppm</span><br><span class="line">Root delay      : 0.013335334 seconds</span><br><span class="line">Root dispersion : 0.001928344 seconds</span><br><span class="line">Update interval : 65.3 seconds</span><br><span class="line">Leap status     : Normal</span><br></pre></td></tr></table></figure>
+
+<p><strong>强制同步系统时钟</strong></p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">chronyc -a makestep</span><br></pre></td></tr></table></figure>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="https://guoltan.github.io/2020/09/25/chrony%E4%B8%BB%E6%9C%BA%E6%97%B6%E9%92%9F%E5%90%8C%E6%AD%A5/" data-id="clrtb17jn0000g4ur8p5u1ks7" data-title="chrony主机时钟同步" class="article-share-link"><span class="fa fa-share">Share</span></a>
+      
+      
+      
+  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/NTP/" rel="tag">NTP</a></li></ul>
+
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2020/11/16/Node%20NotReady%20%E6%8E%92%E6%9F%A5%E6%8C%87%E5%BC%95/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Newer</strong>
+      <div class="article-nav-title">
+        
+          Node NotReady 排查指引
+        
+      </div>
+    </a>
+  
+  
+</nav>
+
+  
+</article>
+
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tags</h3>
+    <div class="widget">
+      <ul class="tag-list" itemprop="keywords"><li class="tag-list-item"><a class="tag-list-link" href="/tags/K8S/" rel="tag">K8S</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/NTP/" rel="tag">NTP</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%B7%A5%E5%85%B7/" rel="tag">工具</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tag Cloud</h3>
+    <div class="widget tagcloud">
+      <a href="/tags/K8S/" style="font-size: 20px;">K8S</a> <a href="/tags/NTP/" style="font-size: 10px;">NTP</a> <a href="/tags/%E5%B7%A5%E5%85%B7/" style="font-size: 10px;">工具</a>
+    </div>
+  </div>
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Archives</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2024/01/">January 2024</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/11/">November 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/09/">September 2020</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Recent Posts</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2024/01/23/kubectl%20logs%20%E6%97%A5%E5%BF%97%E9%87%87%E9%9B%86%E5%B7%A5%E5%85%B7/">基于资源对应 pod 批量执行 kubectl logs 采集工具</a>
+          </li>
+        
+          <li>
+            <a href="/2024/01/16/kubernetes%20%E5%8D%95%E8%8A%82%E7%82%B9%E5%BF%AB%E9%80%9F%E5%AE%89%E8%A3%85/">Kubernetes 快速拉起单节点集群</a>
+          </li>
+        
+          <li>
+            <a href="/2020/11/16/Node%20NotReady%20%E6%8E%92%E6%9F%A5%E6%8C%87%E5%BC%95/">Node NotReady 排查指引</a>
+          </li>
+        
+          <li>
+            <a href="/2020/09/25/chrony%E4%B8%BB%E6%9C%BA%E6%97%B6%E9%92%9F%E5%90%8C%E6%AD%A5/">chrony主机时钟同步</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      
+      &copy; 2024 guoltan<br>
+      Powered by <a href="https://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+
+
+<script src="/js/jquery-3.6.4.min.js"></script>
+
+
+
+  
+<script src="/fancybox/jquery.fancybox.min.js"></script>
+
+
+
+
+<script src="/js/script.js"></script>
+
+
+
+
+
+  </div>
+</body>
+</html>

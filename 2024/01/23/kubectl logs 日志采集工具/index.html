@@ -9,18 +9,18 @@
   <meta name="description" content="背景  在交付运维阶段，有时候在日志平台还没有就绪，或者日志平台有问题情况下，我们需要对 Pod 进行诊断，这时候可能需要去读取 pod 的标准输出。但是一般情况下环境的 Pod 都是多副本高可用的，服务的请求可能会随机落到任意 Pod。对此通常的解决方法是拉多个窗口去观测，这种方式不大方便。这里就通过开发一个简易日志采集脚本来简化改工作。 实现  实际上我只需要获取 pod 的清单，然后挨个 p">
 <meta property="og:type" content="article">
 <meta property="og:title" content="基于资源对应 pod 批量执行 kubectl logs 采集工具">
-<meta property="og:url" content="http://example.com/2024/01/23/kubectl%20logs%20%E6%97%A5%E5%BF%97%E9%87%87%E9%9B%86%E5%B7%A5%E5%85%B7/index.html">
+<meta property="og:url" content="https://guoltan.github.io/2024/01/23/kubectl%20logs%20%E6%97%A5%E5%BF%97%E9%87%87%E9%9B%86%E5%B7%A5%E5%85%B7/index.html">
 <meta property="og:site_name" content="guoltan个人博客">
 <meta property="og:description" content="背景  在交付运维阶段，有时候在日志平台还没有就绪，或者日志平台有问题情况下，我们需要对 Pod 进行诊断，这时候可能需要去读取 pod 的标准输出。但是一般情况下环境的 Pod 都是多副本高可用的，服务的请求可能会随机落到任意 Pod。对此通常的解决方法是拉多个窗口去观测，这种方式不大方便。这里就通过开发一个简易日志采集脚本来简化改工作。 实现  实际上我只需要获取 pod 的清单，然后挨个 p">
 <meta property="og:locale" content="en_US">
-<meta property="og:image" content="http://example.com/2024/01/23/kubectl%20logs%20%E6%97%A5%E5%BF%97%E9%87%87%E9%9B%86%E5%B7%A5%E5%85%B7/1.png">
+<meta property="og:image" content="https://guoltan.github.io/2024/01/23/kubectl%20logs%20%E6%97%A5%E5%BF%97%E9%87%87%E9%9B%86%E5%B7%A5%E5%85%B7/1.png">
 <meta property="article:published_time" content="2024-01-23T12:11:25.000Z">
 <meta property="article:modified_time" content="2024-01-24T03:38:04.589Z">
 <meta property="article:author" content="guoltan">
 <meta property="article:tag" content="K8S">
 <meta property="article:tag" content="工具">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:image" content="http://example.com/2024/01/23/kubectl%20logs%20%E6%97%A5%E5%BF%97%E9%87%87%E9%9B%86%E5%B7%A5%E5%85%B7/1.png">
+<meta name="twitter:image" content="https://guoltan.github.io/2024/01/23/kubectl%20logs%20%E6%97%A5%E5%BF%97%E9%87%87%E9%9B%86%E5%B7%A5%E5%85%B7/1.png">
   
     <link rel="alternate" href="/atom.xml" title="guoltan个人博客" type="application/atom+xml">
   
@@ -68,7 +68,7 @@
         <a class="nav-icon nav-search-btn" title="Search"><span class="fa fa-search"></span></a>
       </nav>
       <div id="search-form-wrap">
-        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://example.com"></form>
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="https://guoltan.github.io"></form>
       </div>
     </div>
   </div>
@@ -111,7 +111,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://example.com/2024/01/23/kubectl%20logs%20%E6%97%A5%E5%BF%97%E9%87%87%E9%9B%86%E5%B7%A5%E5%85%B7/" data-id="clrr7g1b6000098ur7vja87c6" data-title="基于资源对应 pod 批量执行 kubectl logs 采集工具" class="article-share-link"><span class="fa fa-share">Share</span></a>
+      <a data-url="https://guoltan.github.io/2024/01/23/kubectl%20logs%20%E6%97%A5%E5%BF%97%E9%87%87%E9%9B%86%E5%B7%A5%E5%85%B7/" data-id="clrr7g1b6000098ur7vja87c6" data-title="基于资源对应 pod 批量执行 kubectl logs 采集工具" class="article-share-link"><span class="fa fa-share">Share</span></a>
       
       
       
@@ -146,7 +146,7 @@
   <div class="widget-wrap">
     <h3 class="widget-title">Tags</h3>
     <div class="widget">
-      <ul class="tag-list" itemprop="keywords"><li class="tag-list-item"><a class="tag-list-link" href="/tags/K8S/" rel="tag">K8S</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%B7%A5%E5%85%B7/" rel="tag">工具</a></li></ul>
+      <ul class="tag-list" itemprop="keywords"><li class="tag-list-item"><a class="tag-list-link" href="/tags/K8S/" rel="tag">K8S</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/NTP/" rel="tag">NTP</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%B7%A5%E5%85%B7/" rel="tag">工具</a></li></ul>
     </div>
   </div>
 
@@ -156,7 +156,7 @@
   <div class="widget-wrap">
     <h3 class="widget-title">Tag Cloud</h3>
     <div class="widget tagcloud">
-      <a href="/tags/K8S/" style="font-size: 20px;">K8S</a> <a href="/tags/%E5%B7%A5%E5%85%B7/" style="font-size: 10px;">工具</a>
+      <a href="/tags/K8S/" style="font-size: 20px;">K8S</a> <a href="/tags/NTP/" style="font-size: 10px;">NTP</a> <a href="/tags/%E5%B7%A5%E5%85%B7/" style="font-size: 10px;">工具</a>
     </div>
   </div>
 
@@ -165,7 +165,7 @@
   <div class="widget-wrap">
     <h3 class="widget-title">Archives</h3>
     <div class="widget">
-      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2024/01/">January 2024</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/11/">November 2020</a></li></ul>
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2024/01/">January 2024</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/11/">November 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/09/">September 2020</a></li></ul>
     </div>
   </div>
 
@@ -187,6 +187,10 @@
         
           <li>
             <a href="/2020/11/16/Node%20NotReady%20%E6%8E%92%E6%9F%A5%E6%8C%87%E5%BC%95/">Node NotReady 排查指引</a>
+          </li>
+        
+          <li>
+            <a href="/2020/09/25/chrony%E4%B8%BB%E6%9C%BA%E6%97%B6%E9%92%9F%E5%90%8C%E6%AD%A5/">chrony主机时钟同步</a>
           </li>
         
       </ul>
