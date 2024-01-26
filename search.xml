@@ -209,4 +209,41 @@
         <tag>K8S</tag>
       </tags>
   </entry>
+  <entry>
+    <title>排查 kubectl edit 保存失败方法</title>
+    <url>/2022/08/23/%E6%8E%92%E6%9F%A5%20kubectl%20edit%20%E4%BF%9D%E5%AD%98%E5%A4%B1%E8%B4%A5%E6%80%9D%E8%B7%AF/</url>
+    <content><![CDATA[<h2 id="1-常见原因"><a href="#1-常见原因" class="headerlink" title="1. 常见原因"></a><strong>1. 常见原因</strong></h2><p>保存失败的常见原因如下：</p>
+<ul>
+<li><p>使用 tab 产生空白字符。</p>
+</li>
+<li><p>使用了无效的选项、参数等。</p>
+</li>
+<li><p>value 未使用字符串。</p>
+</li>
+<li><p>环境的 kubernetes 配置了 webhook，提交 YAML 修改到 apiserver 以后需要完成校验，如果校验失败或 webhook 的组件故障，此时 kubectl edit 保存会失败。</p>
+</li>
+</ul>
+<h2 id="2-排查思路"><a href="#2-排查思路" class="headerlink" title="2. 排查思路"></a><strong>2. 排查思路</strong></h2><p>  通过 kubectl edit 保存配置时，如果使用了无效的参数或者语法错误。将会打印相印的错误提示，错误提示的行首有 # 的字符。根据这些提示即可找到故障原因。</p>
+<p>  另一种问题是，保存 YAML 时未产生错误提示，但是保存后产生了类似如下的错误提示 dial tcp: lookup ti-resource-server.ti-base.svc.cluster.local on [::1]:53: dial udp [::1]:53: connect: network is unreachable。这种场景通常是因为 webhook 组件故障引起的。需要解决 webhook 组件故障。</p>
+<h2 id="3-常见错误原因"><a href="#3-常见错误原因" class="headerlink" title="3. 常见错误原因"></a><strong>3. 常见错误原因</strong></h2><h3 id="3-1-did-not-find-expected-key"><a href="#3-1-did-not-find-expected-key" class="headerlink" title="3.1 did not find expected key"></a><strong>3.1 did not find expected key</strong></h3><p>  如果看见 did not find expected key 的错误，通常是空格数量不正确导致的。上下级选项需要保持两个空格。</p>
+<h3 id="3-2-The-edited-file-failed-validation"><a href="#3-2-The-edited-file-failed-validation" class="headerlink" title="3.2 The edited file failed validation"></a><strong>3.2 The edited file failed validation</strong></h3><p>  如果看见类似 invalid value: “The edited file failed validation”: ValidationError(Deployment.spec): unknown field “12345” in io.k8s.api.apps.v1.DeploymentSpec 的错误，通常是使用了错误的选项。可以通过 kubectl explain 资源.spec.选项名称 来获取有效合法的 key、values 值。</p>
+<h3 id="3-3-cannot-convert-int64-to-string"><a href="#3-3-cannot-convert-int64-to-string" class="headerlink" title="3.3 cannot convert int64 to string"></a><strong>3.3 cannot convert int64 to string</strong></h3><p>  未使用”” 将整型数据括起来。常见于添加 nodeSelector 未给 value 配置 “”。</p>
+<h3 id="3-4-no-matches-for-kind-“xxxx”-in-version-“xxxx”"><a href="#3-4-no-matches-for-kind-“xxxx”-in-version-“xxxx”" class="headerlink" title="3.4 no matches for kind “xxxx” in version “xxxx”"></a><strong>3.4 no matches for kind “xxxx” in version “xxxx”</strong></h3><p>  如果看见类似 The edited file had a syntax error: unable to recognize “edited-file”: no matches for kind “Deployment” in version “extension&#x2F;v1beta1” 的错误，通常是 YAML 编辑的资源使用了错误的 apiVersion 导致的。同样可以通过 kubectl explain 指令来获取对应资源的 apiVersion 可用版本。</p>
+<h3 id="3-5-provided-port-is-not-in-the-valid-range-The-range-of-valid-ports-is-xxxx-xxxx"><a href="#3-5-provided-port-is-not-in-the-valid-range-The-range-of-valid-ports-is-xxxx-xxxx" class="headerlink" title="3.5 provided port is not in the valid range. The range of valid ports is xxxx-xxxx"></a><strong>3.5 provided port is not in the valid range. The range of valid ports is xxxx-xxxx</strong></h3><p>  只存在于 service 修改的场景，如果看见类似于 * spec.ports[0].nodePort: Invalid value: 10508: provided port is not in the valid range. The range of valid ports is 30000-32767 的操作，代表修改 service 配置的 NodePort 超出了 kube-apiserver 中 –service-node-port-range 定义的范围，这个范围默认值是 30000-32767，也就是说 NodePort 配置的端口不能超出这个范围。</p>
+]]></content>
+      <tags>
+        <tag>K8S</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>kubernetes go开发环境安装</title>
+    <url>/2024/01/26/go%E5%BC%80%E5%8F%91%E7%8E%AF%E5%A2%83%E7%8E%AF%E5%A2%83/</url>
+    <content><![CDATA[<h2 id="go-安装"><a href="#go-安装" class="headerlink" title="go 安装"></a>go 安装</h2><p>wget <a href="https://dl.google.com/go/go1.21.6.linux-amd64.tar.gz">https://dl.google.com/go/go1.21.6.linux-amd64.tar.gz</a> tar xvf go1.21.6.linux-amd64.tar.gz<br>mv go &#x2F;usr&#x2F;local&#x2F;go<br>echo “PATH&#x3D;PATH:&#x2F;usr&#x2F;local&#x2F;go&#x2F;bin” &gt;&gt; &#x2F;etc&#x2F;profile<br>source &#x2F;etc&#x2F;profile</p>
+<h2 id="使用国内代理"><a href="#使用国内代理" class="headerlink" title="使用国内代理"></a>使用国内代理</h2><p>go env -w GOPROXY&#x3D;<a href="https://goproxy.cn,direct/">https://goproxy.cn,direct</a></p>
+<p>go env -w GO111MODULE&#x3D;auto</p>
+]]></content>
+      <tags>
+        <tag>go</tag>
+      </tags>
+  </entry>
 </search>

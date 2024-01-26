@@ -19,26 +19,28 @@
 
 <script class="next-config" data-name="main" type="application/json">{"hostname":"guoltan.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":false,"version":"8.19.1","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12},"copycode":{"enable":false,"style":null},"fold":{"enable":false,"height":500},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false}}</script><script src="/js/config.js"></script>
 
-    <meta property="og:type" content="article">
-<meta property="og:title" content="about">
-<meta property="og:url" content="https://guoltan.github.io/2024/01/25/about/index.html">
+    <meta name="description" content="1. 常见原因保存失败的常见原因如下：  使用 tab 产生空白字符。  使用了无效的选项、参数等。  value 未使用字符串。  环境的 kubernetes 配置了 webhook，提交 YAML 修改到 apiserver 以后需要完成校验，如果校验失败或 webhook 的组件故障，此时 kubectl edit 保存会失败。   2. 排查思路  通过 kubectl edit 保存配">
+<meta property="og:type" content="article">
+<meta property="og:title" content="排查 kubectl edit 保存失败方法">
+<meta property="og:url" content="https://guoltan.github.io/2022/08/23/%E6%8E%92%E6%9F%A5%20kubectl%20edit%20%E4%BF%9D%E5%AD%98%E5%A4%B1%E8%B4%A5%E6%80%9D%E8%B7%AF/index.html">
 <meta property="og:site_name" content="guoltan个人博客">
+<meta property="og:description" content="1. 常见原因保存失败的常见原因如下：  使用 tab 产生空白字符。  使用了无效的选项、参数等。  value 未使用字符串。  环境的 kubernetes 配置了 webhook，提交 YAML 修改到 apiserver 以后需要完成校验，如果校验失败或 webhook 的组件故障，此时 kubectl edit 保存会失败。   2. 排查思路  通过 kubectl edit 保存配">
 <meta property="og:locale" content="zh_CN">
-<meta property="article:published_time" content="2024-01-25T15:08:00.000Z">
-<meta property="article:modified_time" content="2024-01-25T15:08:00.896Z">
+<meta property="article:published_time" content="2022-08-23T12:11:25.000Z">
+<meta property="article:modified_time" content="2024-01-26T15:14:01.260Z">
 <meta property="article:author" content="guoltan">
-<meta property="article:tag" content="摸鱼，自嗨，困奋">
+<meta property="article:tag" content="K8S">
 <meta name="twitter:card" content="summary">
 
 
-<link rel="canonical" href="https://guoltan.github.io/2024/01/25/about/">
+<link rel="canonical" href="https://guoltan.github.io/2022/08/23/%E6%8E%92%E6%9F%A5%20kubectl%20edit%20%E4%BF%9D%E5%AD%98%E5%A4%B1%E8%B4%A5%E6%80%9D%E8%B7%AF/">
 
 
 
-<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://guoltan.github.io/2024/01/25/about/","path":"2024/01/25/about/","title":"about"}</script>
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://guoltan.github.io/2022/08/23/%E6%8E%92%E6%9F%A5%20kubectl%20edit%20%E4%BF%9D%E5%AD%98%E5%A4%B1%E8%B4%A5%E6%80%9D%E8%B7%AF/","path":"2022/08/23/排查 kubectl edit 保存失败思路/","title":"排查 kubectl edit 保存失败方法"}</script>
 
 <script class="next-config" data-name="calendar" type="application/json">""</script>
-<title>about | guoltan个人博客</title>
+<title>排查 kubectl edit 保存失败方法 | guoltan个人博客</title>
   
 
 
@@ -125,7 +127,7 @@
   
   <aside class="sidebar">
 
-    <div class="sidebar-inner sidebar-overview-active">
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
       <ul class="sidebar-nav">
         <li class="sidebar-nav-toc">
           文章目录
@@ -138,6 +140,7 @@
       <div class="sidebar-panel-container">
         <!--noindex-->
         <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#1-%E5%B8%B8%E8%A7%81%E5%8E%9F%E5%9B%A0"><span class="nav-number">1.</span> <span class="nav-text">1. 常见原因</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-%E6%8E%92%E6%9F%A5%E6%80%9D%E8%B7%AF"><span class="nav-number">2.</span> <span class="nav-text">2. 排查思路</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-%E5%B8%B8%E8%A7%81%E9%94%99%E8%AF%AF%E5%8E%9F%E5%9B%A0"><span class="nav-number">3.</span> <span class="nav-text">3. 常见错误原因</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#3-1-did-not-find-expected-key"><span class="nav-number">3.1.</span> <span class="nav-text">3.1 did not find expected key</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-2-The-edited-file-failed-validation"><span class="nav-number">3.2.</span> <span class="nav-text">3.2 The edited file failed validation</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-3-cannot-convert-int64-to-string"><span class="nav-number">3.3.</span> <span class="nav-text">3.3 cannot convert int64 to string</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-4-no-matches-for-kind-%E2%80%9Cxxxx%E2%80%9D-in-version-%E2%80%9Cxxxx%E2%80%9D"><span class="nav-number">3.4.</span> <span class="nav-text">3.4 no matches for kind “xxxx” in version “xxxx”</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-5-provided-port-is-not-in-the-valid-range-The-range-of-valid-ports-is-xxxx-xxxx"><span class="nav-number">3.5.</span> <span class="nav-text">3.5 provided port is not in the valid range. The range of valid ports is xxxx-xxxx</span></a></li></ol></li></ol></div>
         </div>
         <!--/noindex-->
 
@@ -191,7 +194,7 @@
   
 
   <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="https://guoltan.github.io/2024/01/25/about/">
+    <link itemprop="mainEntityOfPage" href="https://guoltan.github.io/2022/08/23/%E6%8E%92%E6%9F%A5%20kubectl%20edit%20%E4%BF%9D%E5%AD%98%E5%A4%B1%E8%B4%A5%E6%80%9D%E8%B7%AF/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
       <meta itemprop="image" content="/images/avatar.gif">
@@ -204,12 +207,12 @@
     </span>
 
     <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
-      <meta itemprop="name" content="about | guoltan个人博客">
+      <meta itemprop="name" content="排查 kubectl edit 保存失败方法 | guoltan个人博客">
       <meta itemprop="description" content="">
     </span>
       <header class="post-header">
         <h1 class="post-title" itemprop="name headline">
-          about
+          排查 kubectl edit 保存失败方法
         </h1>
 
         <div class="post-meta-container">
@@ -220,7 +223,7 @@
       </span>
       <span class="post-meta-item-text">发表于</span>
 
-      <time title="创建时间：2024-01-25 23:08:00" itemprop="dateCreated datePublished" datetime="2024-01-25T23:08:00+08:00">2024-01-25</time>
+      <time title="创建时间：2022-08-23 20:11:25" itemprop="dateCreated datePublished" datetime="2022-08-23T20:11:25+08:00">2022-08-23</time>
     </span>
 
   
@@ -236,14 +239,14 @@
         <i class="far fa-file-word"></i>
       </span>
       <span class="post-meta-item-text">本文字数：</span>
-      <span>0</span>
+      <span>1.6k</span>
     </span>
     <span class="post-meta-item" title="阅读时长">
       <span class="post-meta-item-icon">
         <i class="far fa-clock"></i>
       </span>
       <span class="post-meta-item-text">阅读时长 &asymp;</span>
-      <span>1 分钟</span>
+      <span>3 分钟</span>
     </span>
 </div>
 
@@ -253,7 +256,25 @@
     
     
     
-    <div class="post-body" itemprop="articleBody">
+    <div class="post-body" itemprop="articleBody"><h2 id="1-常见原因"><a href="#1-常见原因" class="headerlink" title="1. 常见原因"></a><strong>1. 常见原因</strong></h2><p>保存失败的常见原因如下：</p>
+<ul>
+<li><p>使用 tab 产生空白字符。</p>
+</li>
+<li><p>使用了无效的选项、参数等。</p>
+</li>
+<li><p>value 未使用字符串。</p>
+</li>
+<li><p>环境的 kubernetes 配置了 webhook，提交 YAML 修改到 apiserver 以后需要完成校验，如果校验失败或 webhook 的组件故障，此时 kubectl edit 保存会失败。</p>
+</li>
+</ul>
+<h2 id="2-排查思路"><a href="#2-排查思路" class="headerlink" title="2. 排查思路"></a><strong>2. 排查思路</strong></h2><p>  通过 kubectl edit 保存配置时，如果使用了无效的参数或者语法错误。将会打印相印的错误提示，错误提示的行首有 # 的字符。根据这些提示即可找到故障原因。</p>
+<p>  另一种问题是，保存 YAML 时未产生错误提示，但是保存后产生了类似如下的错误提示 dial tcp: lookup ti-resource-server.ti-base.svc.cluster.local on [::1]:53: dial udp [::1]:53: connect: network is unreachable。这种场景通常是因为 webhook 组件故障引起的。需要解决 webhook 组件故障。</p>
+<h2 id="3-常见错误原因"><a href="#3-常见错误原因" class="headerlink" title="3. 常见错误原因"></a><strong>3. 常见错误原因</strong></h2><h3 id="3-1-did-not-find-expected-key"><a href="#3-1-did-not-find-expected-key" class="headerlink" title="3.1 did not find expected key"></a><strong>3.1 did not find expected key</strong></h3><p>  如果看见 did not find expected key 的错误，通常是空格数量不正确导致的。上下级选项需要保持两个空格。</p>
+<h3 id="3-2-The-edited-file-failed-validation"><a href="#3-2-The-edited-file-failed-validation" class="headerlink" title="3.2 The edited file failed validation"></a><strong>3.2 The edited file failed validation</strong></h3><p>  如果看见类似 invalid value: “The edited file failed validation”: ValidationError(Deployment.spec): unknown field “12345” in io.k8s.api.apps.v1.DeploymentSpec 的错误，通常是使用了错误的选项。可以通过 kubectl explain 资源.spec.选项名称 来获取有效合法的 key、values 值。</p>
+<h3 id="3-3-cannot-convert-int64-to-string"><a href="#3-3-cannot-convert-int64-to-string" class="headerlink" title="3.3 cannot convert int64 to string"></a><strong>3.3 cannot convert int64 to string</strong></h3><p>  未使用”” 将整型数据括起来。常见于添加 nodeSelector 未给 value 配置 “”。</p>
+<h3 id="3-4-no-matches-for-kind-“xxxx”-in-version-“xxxx”"><a href="#3-4-no-matches-for-kind-“xxxx”-in-version-“xxxx”" class="headerlink" title="3.4 no matches for kind “xxxx” in version “xxxx”"></a><strong>3.4 no matches for kind “xxxx” in version “xxxx”</strong></h3><p>  如果看见类似 The edited file had a syntax error: unable to recognize “edited-file”: no matches for kind “Deployment” in version “extension&#x2F;v1beta1” 的错误，通常是 YAML 编辑的资源使用了错误的 apiVersion 导致的。同样可以通过 kubectl explain 指令来获取对应资源的 apiVersion 可用版本。</p>
+<h3 id="3-5-provided-port-is-not-in-the-valid-range-The-range-of-valid-ports-is-xxxx-xxxx"><a href="#3-5-provided-port-is-not-in-the-valid-range-The-range-of-valid-ports-is-xxxx-xxxx" class="headerlink" title="3.5 provided port is not in the valid range. The range of valid ports is xxxx-xxxx"></a><strong>3.5 provided port is not in the valid range. The range of valid ports is xxxx-xxxx</strong></h3><p>  只存在于 service 修改的场景，如果看见类似于 * spec.ports[0].nodePort: Invalid value: 10508: provided port is not in the valid range. The range of valid ports is 30000-32767 的操作，代表修改 service 配置的 NodePort 超出了 kube-apiserver 中 –service-node-port-range 定义的范围，这个范围默认值是 30000-32767，也就是说 NodePort 配置的端口不能超出这个范围。</p>
+
     </div>
 
     
@@ -261,18 +282,21 @@
     
 
     <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/K8S/" rel="tag"># K8S</a>
+          </div>
 
         
 
           <div class="post-nav">
             <div class="post-nav-item">
-                <a href="/2024/01/23/kubectl%20logs%20%E6%97%A5%E5%BF%97%E9%87%87%E9%9B%86%E5%B7%A5%E5%85%B7/" rel="prev" title="基于资源对应 pod 批量执行 kubectl logs 采集工具">
-                  <i class="fa fa-angle-left"></i> 基于资源对应 pod 批量执行 kubectl logs 采集工具
+                <a href="/2020/11/16/Node%20NotReady%20%E6%8E%92%E6%9F%A5%E6%8C%87%E5%BC%95/" rel="prev" title="Node NotReady 排查指引">
+                  <i class="fa fa-angle-left"></i> Node NotReady 排查指引
                 </a>
             </div>
             <div class="post-nav-item">
-                <a href="/2024/01/26/go%E5%BC%80%E5%8F%91%E7%8E%AF%E5%A2%83%E7%8E%AF%E5%A2%83/" rel="next" title="kubernetes go开发环境安装">
-                  kubernetes go开发环境安装 <i class="fa fa-angle-right"></i>
+                <a href="/2024/01/16/kubernetes%20%E5%8D%95%E8%8A%82%E7%82%B9%E5%BF%AB%E9%80%9F%E5%AE%89%E8%A3%85/" rel="next" title="Kubernetes 快速拉起单节点集群">
+                  Kubernetes 快速拉起单节点集群 <i class="fa fa-angle-right"></i>
                 </a>
             </div>
           </div>
