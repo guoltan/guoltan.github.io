@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222"><meta name="generator" content="Hexo 7.1.1">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" integrity="sha256-yIDrPSXHZdOZhAqiBP7CKzIwMQmRCJ8UeB8Jo17YC4o=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"guoltan.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":false,"version":"8.19.1","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12},"copycode":{"enable":false,"style":null},"fold":{"enable":false,"height":500},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false}}</script><script src="/js/config.js"></script>
+
+    <meta name="description" content="有些场景下，我们需要了解某个进程正在和哪些服务建立连接。本文主要是记录了捕获进程连接信息的几个实现方法。 实现ss 指令最先想到的方法是通过 netstat 或者 ss 的工具去持续查看机器的连接建立情况，并查看 PID 或者进程名称，参见如下 12345# 获取 sshd 进程的连接情况[root@10 ~]# ss -t  -p | grep sshdESTAB      0      0">
+<meta property="og:type" content="article">
+<meta property="og:title" content="如何查看某进程建立的连接信息">
+<meta property="og:url" content="https://guoltan.github.io/2022/09/10/%E5%A6%82%E4%BD%95%E6%9F%A5%E7%9C%8B%E6%9F%90%E8%BF%9B%E7%A8%8B%E5%BB%BA%E7%AB%8B%E7%9A%84%E8%BF%9E%E6%8E%A5%E4%BF%A1%E6%81%AF/index.html">
+<meta property="og:site_name" content="guoltan个人博客">
+<meta property="og:description" content="有些场景下，我们需要了解某个进程正在和哪些服务建立连接。本文主要是记录了捕获进程连接信息的几个实现方法。 实现ss 指令最先想到的方法是通过 netstat 或者 ss 的工具去持续查看机器的连接建立情况，并查看 PID 或者进程名称，参见如下 12345# 获取 sshd 进程的连接情况[root@10 ~]# ss -t  -p | grep sshdESTAB      0      0">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2022-09-10T12:11:25.000Z">
+<meta property="article:modified_time" content="2024-01-27T15:05:54.159Z">
+<meta property="article:author" content="guoltan">
+<meta property="article:tag" content="Linux">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://guoltan.github.io/2022/09/10/%E5%A6%82%E4%BD%95%E6%9F%A5%E7%9C%8B%E6%9F%90%E8%BF%9B%E7%A8%8B%E5%BB%BA%E7%AB%8B%E7%9A%84%E8%BF%9E%E6%8E%A5%E4%BF%A1%E6%81%AF/">
+
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://guoltan.github.io/2022/09/10/%E5%A6%82%E4%BD%95%E6%9F%A5%E7%9C%8B%E6%9F%90%E8%BF%9B%E7%A8%8B%E5%BB%BA%E7%AB%8B%E7%9A%84%E8%BF%9E%E6%8E%A5%E4%BF%A1%E6%81%AF/","path":"2022/09/10/如何查看某进程建立的连接信息/","title":"如何查看某进程建立的连接信息"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>如何查看某进程建立的连接信息 | guoltan个人博客</title>
+  
+
+
+
+
+
+
+
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+<link rel="alternate" href="/atom.xml" title="guoltan个人博客" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">guoltan个人博客</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="搜索" role="button">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a></li><li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a></li><li class="menu-item menu-item-archives"><a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a></li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup"><div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off" maxlength="80"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close" role="button">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div class="search-result-container no-result">
+  <div class="search-result-icon">
+    <i class="fa fa-spinner fa-pulse fa-5x"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%AE%9E%E7%8E%B0"><span class="nav-number">1.</span> <span class="nav-text">实现</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#ss-%E6%8C%87%E4%BB%A4"><span class="nav-number">1.1.</span> <span class="nav-text">ss 指令</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#audit-%E6%97%A5%E5%BF%97"><span class="nav-number">1.2.</span> <span class="nav-text">audit 日志</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#perf-%E5%B7%A5%E5%85%B7"><span class="nav-number">1.3.</span> <span class="nav-text">perf 工具</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#lsof-%E5%B7%A5%E5%85%B7"><span class="nav-number">1.4.</span> <span class="nav-text">lsof 工具</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#strace-%E5%B7%A5%E5%85%B7"><span class="nav-number">1.5.</span> <span class="nav-text">strace 工具</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%80%BB%E7%BB%93"><span class="nav-number">2.</span> <span class="nav-text">总结</span></a></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">guoltan</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">8</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-tags">
+          <a href="/tags/">
+        <span class="site-state-item-count">5</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/guoltan" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;guoltan" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:897156356@qq.com" title="E-Mail → mailto:897156356@qq.com" rel="noopener me" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://guoltan.github.io/2022/09/10/%E5%A6%82%E4%BD%95%E6%9F%A5%E7%9C%8B%E6%9F%90%E8%BF%9B%E7%A8%8B%E5%BB%BA%E7%AB%8B%E7%9A%84%E8%BF%9E%E6%8E%A5%E4%BF%A1%E6%81%AF/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="guoltan">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="guoltan个人博客">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="如何查看某进程建立的连接信息 | guoltan个人博客">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          如何查看某进程建立的连接信息
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+
+      <time title="创建时间：2022-09-10 20:11:25" itemprop="dateCreated datePublished" datetime="2022-09-10T20:11:25+08:00">2022-09-10</time>
+    </span>
+
+  
+    <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv">
+      <span class="post-meta-item-icon">
+        <i class="far fa-eye"></i>
+      </span>
+      <span class="post-meta-item-text">阅读次数：</span>
+      <span id="busuanzi_value_page_pv"></span>
+    </span>
+    <span class="post-meta-item" title="本文字数">
+      <span class="post-meta-item-icon">
+        <i class="far fa-file-word"></i>
+      </span>
+      <span class="post-meta-item-text">本文字数：</span>
+      <span>6.8k</span>
+    </span>
+    <span class="post-meta-item" title="阅读时长">
+      <span class="post-meta-item-icon">
+        <i class="far fa-clock"></i>
+      </span>
+      <span class="post-meta-item-text">阅读时长 &asymp;</span>
+      <span>12 分钟</span>
+    </span>
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><p>  有些场景下，我们需要了解某个进程正在和哪些服务建立连接。本文主要是记录了捕获进程连接信息的几个实现方法。</p>
+<h2 id="实现"><a href="#实现" class="headerlink" title="实现"></a>实现</h2><h3 id="ss-指令"><a href="#ss-指令" class="headerlink" title="ss 指令"></a>ss 指令</h3><p>最先想到的方法是通过 netstat 或者 ss 的工具去持续查看机器的连接建立情况，并查看 PID 或者进程名称，参见如下</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta prompt_"># </span><span class="language-bash">获取 sshd 进程的连接情况</span></span><br><span class="line">[root@10 ~]# ss -t  -p | grep sshd</span><br><span class="line">ESTAB      0      0      10.0.2.15:ssh                  10.0.2.15:42700                 users:((&quot;sshd&quot;,pid=2615,fd=3))</span><br><span class="line">ESTAB      0      0      192.168.214.254:ssh                  192.168.214.1:56070                 users:((&quot;sshd&quot;,pid=2863,fd=3))</span><br><span class="line">ESTAB      0      36     192.168.214.254:ssh                  192.168.214.1:56068                 users:((&quot;sshd&quot;,pid=2859,fd=3))考虑</span><br></pre></td></tr></table></figure>
+
+<p>考虑到进程的连接信息是会持续变化的，可通过 while 的方法循环去查看某个进程的连接情况，实现类似 top 的效果</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">while true ; do clear ; ss -t  -p | grep sshd ; sleep 1; done</span><br></pre></td></tr></table></figure>
+
+<h3 id="audit-日志"><a href="#audit-日志" class="headerlink" title="audit 日志"></a>audit 日志</h3><p>  ss 指令的局限在于它没办法回溯历史，你只能查看到当前正在建立的连接信息。但是某些场景下，我们可能需要知道某个进程曾经和哪些机器建立过。这时候就可以借助 audit 日志</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">[root@10 ~]# tail /var/log/audit/audit.log</span><br><span class="line">type=CRYPTO_KEY_USER msg=audit(1703823116.926:813): pid=2872 uid=0 auid=0 ses=89 subj=unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023 msg=&#x27;op=destroy kind=server fp=SHA256:83:79:c8:32:03:bd:25:7b:54:54:f7:b9:99:2b:3d:c4:0d:d9:55:ed:6c:11:a2:8f:e9:b8:ba:0f:4c:18:8c:6f direction=? spid=2872 suid=0  exe=&quot;/usr/sbin/sshd&quot; hostname=10.0.2.15 addr=? terminal=pts/1 res=success&#x27;</span><br></pre></td></tr></table></figure>
+
+<p>  可以看到 audit 的审计是可以记录进程的相关信息，此处记录了进程和谁互联。当然 audit 使用的前提是系统打开了该功能。</p>
+<h3 id="perf-工具"><a href="#perf-工具" class="headerlink" title="perf 工具"></a>perf 工具</h3><p>  perf 工具可以用来追踪特定进程建立连接的信息，参考如下方法</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta prompt_"># </span><span class="language-bash">捕获信息</span></span><br><span class="line">perf record -e &#x27;syscalls:sys_enter_connect&#x27; -p &lt;进程名称&gt;</span><br><span class="line"><span class="meta prompt_"></span></span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">查看捕获结果</span></span><br><span class="line">perf report</span><br></pre></td></tr></table></figure>
+
+<h3 id="lsof-工具"><a href="#lsof-工具" class="headerlink" title="lsof 工具"></a>lsof 工具</h3><p>  lsof 工具可以列出指定进程正在和谁建立连接，和 ss 类似</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta prompt_"># </span><span class="language-bash">2615 是 PID，根据实际情况调整</span></span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">也可以用 -c 参数替代，-c 参数为追踪的 <span class="built_in">command</span></span></span><br><span class="line">[root@10 ~]# lsof -i -a -p 2615</span><br><span class="line">COMMAND  PID USER   FD   TYPE DEVICE SIZE/OFF NODE NAME</span><br><span class="line">sshd    2615 root    3u  IPv4  32428      0t0  TCP 10.0.2.15:ssh-&gt;10.0.2.15:42700 (ESTABLISHED)</span><br></pre></td></tr></table></figure>
+
+<p>  同样可以通过 while 循环实现持续查看状态</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">while true ; do clear ; lsof -i -a -p 2615 ; sleep 1; done</span><br></pre></td></tr></table></figure>
+
+<h3 id="strace-工具"><a href="#strace-工具" class="headerlink" title="strace 工具"></a>strace 工具</h3><p>  strace 工具是非常强大的链路追踪工具，可以通过 strace 对运行中的进程或者某个命令的执行过程进行追踪。</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta prompt_"># </span><span class="language-bash">使用 trace=network 可以列出网络相关的追踪信息</span></span><br><span class="line">[root@10 ~]# strace -e trace=network curl www.baidu.com</span><br><span class="line">socket(AF_INET6, SOCK_DGRAM, IPPROTO_IP) = 3</span><br><span class="line">socket(AF_INET, SOCK_STREAM, IPPROTO_TCP) = 3</span><br><span class="line">setsockopt(3, SOL_SOCKET, SO_KEEPALIVE, [1], 4) = 0</span><br><span class="line">setsockopt(3, SOL_TCP, TCP_KEEPIDLE, [60], 4) = 0</span><br><span class="line">setsockopt(3, SOL_TCP, TCP_KEEPINTVL, [60], 4) = 0</span><br><span class="line">connect(3, &#123;sa_family=AF_INET, sin_port=htons(80), sin_addr=inet_addr(&quot;120.232.145.144&quot;)&#125;, 16) = -1 EINPROGRESS (Operation now in progress)</span><br><span class="line">getsockopt(3, SOL_SOCKET, SO_ERROR, [0], [4]) = 0</span><br><span class="line">getpeername(3, &#123;sa_family=AF_INET, sin_port=htons(80), sin_addr=inet_addr(&quot;120.232.145.144&quot;)&#125;, [128-&gt;16]) = 0</span><br><span class="line">getsockname(3, &#123;sa_family=AF_INET, sin_port=htons(43260), sin_addr=inet_addr(&quot;10.0.2.15&quot;)&#125;, [128-&gt;16]) = 0</span><br><span class="line">sendto(3, &quot;GET / HTTP/1.1\r\nUser-Agent: curl&quot;..., 77, MSG_NOSIGNAL, NULL, 0) = 77</span><br><span class="line">recvfrom(3, &quot;HTTP/1.1 200 OK\r\nAccept-Ranges: &quot;..., 16384, 0, NULL, NULL) = 2781</span><br><span class="line">&lt;!DOCTYPE html&gt;</span><br><span class="line">&lt;!--STATUS OK--&gt;&lt;html&gt; &lt;head&gt;&lt;meta http-equiv=content-type content=text/html;charset=utf-8&gt;&lt;meta http-equiv=X-UA-Compatible content=IE=Edge&gt;&lt;meta content=always name=referrer&gt;&lt;link rel=stylesheet type=text/css href=http://s1.bdstatic.com/r/www/cache/bdorz/baidu.min.css&gt;&lt;title&gt;百度一下，你就知道&lt;/title&gt;&lt;/head&gt; &lt;body link=#0000cc&gt; &lt;div id=wrapper&gt; &lt;div id=head&gt; &lt;div class=head_wrapper&gt; &lt;div class=s_form&gt; &lt;div class=s_form_wrapper&gt; &lt;div id=lg&gt; &lt;img hidefocus=true src=//www.baidu.com/img/bd_logo1.png width=270 height=129&gt; &lt;/div&gt; &lt;form id=form name=f action=//www.baidu.com/s class=fm&gt; &lt;input type=hidden name=bdorz_come value=1&gt; &lt;input type=hidden name=ie value=utf-8&gt; &lt;input type=hidden name=f value=8&gt; &lt;input type=hidden name=rsv_bp value=1&gt; &lt;input type=hidden name=rsv_idx value=1&gt; &lt;input type=hidden name=tn value=baidu&gt;&lt;span class=&quot;bg s_ipt_wr&quot;&gt;&lt;input id=kw name=wd class=s_ipt value maxlength=255 autocomplete=off autofocus&gt;&lt;/span&gt;&lt;span class=&quot;bg s_btn_wr&quot;&gt;&lt;input type=submit id=su value=百度一下 class=&quot;bg s_btn&quot;&gt;&lt;/span&gt; &lt;/form&gt; &lt;/div&gt; &lt;/div&gt; &lt;div id=u1&gt; &lt;a href=http://news.baidu.com name=tj_trnews class=mnav&gt;新闻&lt;/a&gt; &lt;a href=http://www.hao123.com name=tj_trhao123 class=mnav&gt;hao123&lt;/a&gt; &lt;a href=http://map.baidu.com name=tj_trmap class=mnav&gt;地图&lt;/a&gt; &lt;a href=http://v.baidu.com name=tj_trvideo class=mnav&gt;视频&lt;/a&gt; &lt;a href=http://tieba.baidu.com name=tj_trtieba class=mnav&gt;贴吧&lt;/a&gt; &lt;noscript&gt; &lt;a href=http://www.baidu.com/bdorz/login.gif?login&amp;tpl=mn&amp;u=http%3A%2F%2Fwww.baidu.com%2f%3fbdorz_come%3d1 name=tj_login class=lb&gt;登录&lt;/a&gt; &lt;/noscript&gt; &lt;script&gt;document.write(&#x27;&lt;a href=&quot;http://www.baidu.com/bdorz/login.gif?login&amp;tpl=mn&amp;u=&#x27;+ encodeURIComponent(window.location.href+ (window.location.search === &quot;&quot; ? &quot;?&quot; : &quot;&amp;&quot;)+ &quot;bdorz_come=1&quot;)+ &#x27;&quot; name=&quot;tj_login&quot; class=&quot;lb&quot;&gt;登录&lt;/a&gt;&#x27;);&lt;/script&gt; &lt;a href=//www.baidu.com/more/ name=tj_briicon class=bri style=&quot;display: block;&quot;&gt;更多产品&lt;/a&gt; &lt;/div&gt; &lt;/div&gt; &lt;/div&gt; &lt;div id=ftCon&gt; &lt;div id=ftConw&gt; &lt;p id=lh&gt; &lt;a href=http://home.baidu.com&gt;关于百度&lt;/a&gt; &lt;a href=http://ir.baidu.com&gt;About Baidu&lt;/a&gt; &lt;/p&gt; &lt;p id=cp&gt;©2017 Baidu &lt;a href=http://www.baidu.com/duty/&gt;使用百度前必读&lt;/a&gt;  &lt;a href=http://jianyi.baidu.com/ class=cp-feedback&gt;意见反馈&lt;/a&gt; 京ICP证030173号  &lt;img src=//www.baidu.com/img/gs.gif&gt; &lt;/p&gt; &lt;/div&gt; &lt;/div&gt; &lt;/div&gt; &lt;/body&gt; &lt;/html&gt;</span><br><span class="line">+++ exited with 0 +++</span><br></pre></td></tr></table></figure>
+
+<p>  另一个示例，使用 strace 追踪已运行的进程</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">[root@localhost ~]# strace -p 903 -e trace=network</span><br><span class="line">strace: Process 903 attached</span><br><span class="line">--- SIGCHLD &#123;si_signo=SIGCHLD, si_code=CLD_EXITED, si_pid=18908, si_uid=0, si_status=255, si_utime=0, si_stime=0&#125; ---</span><br><span class="line">accept(3, &#123;sa_family=AF_INET, sin_port=htons(34004), sin_addr=inet_addr(&quot;192.168.214.254&quot;)&#125;, [128-&gt;16]) = 5</span><br><span class="line">socketpair(AF_UNIX, SOCK_STREAM, 0, [8, 9]) = 0</span><br></pre></td></tr></table></figure>
+
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>  实际上可使用的方法不止上文提及的几种手段，也可以通过 ebpf 等方式来实现进程连接信息的捕获。本文仅列出了常见的集中可用手段。</p>
+<p>  最后对这几个方法进行简单的小结，见下表</p>
+<table>
+<thead>
+<tr>
+<th>方法</th>
+<th>示例</th>
+<th>特点</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>ss 指令</td>
+<td>ss -t  -p | grep &lt;进程ID&gt;</td>
+<td>需要借助 while 的方法实现实时查看<br>精确度不能完全保证，查询之间存在间隔<br>不能查看历史的连接信息<br>系统默认会有 ss 指令，不需要额外去安装</td>
+</tr>
+<tr>
+<td>audit 日志</td>
+<td>tail &#x2F;var&#x2F;log&#x2F;audit&#x2F;audit.log</td>
+<td>可查阅历史连接信息<br>依赖环境打开 audit 功能</td>
+</tr>
+<tr>
+<td>perf 工具</td>
+<td>perf record -e ‘syscalls:sys_enter_connect’ -p &lt;进程ID&gt;</td>
+<td>精确度有保障，可实时捕获数据并写入到一个结果文件，便于事后分析。<br>同样的不支持查看历史的连接信息</td>
+</tr>
+<tr>
+<td>lsof 工具</td>
+<td>lsof -i -a -p &lt;进程ID&gt;</td>
+<td>基本同 ss 指令</td>
+</tr>
+<tr>
+<td>strace 工具</td>
+<td>strace -e trace&#x3D;network -p &lt;进程ID&gt;</td>
+<td>精确度有保障，可实时捕获数据<br>支持单条命令调试，也支持加载现有进程。<br>同样的不支持查看历史的连接信息。</td>
+</tr>
+</tbody></table>
+<p> 基于上述的汇总，可以看出这些指令直接是可以取合集做一个工具实现更好的信息捕获的。后续可以实现一个自动化的工具，加入到 orca-tools 里面。</p>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/Linux/" rel="tag"># Linux</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/2022/08/23/%E6%8E%92%E6%9F%A5%20kubectl%20edit%20%E4%BF%9D%E5%AD%98%E5%A4%B1%E8%B4%A5%E6%80%9D%E8%B7%AF/" rel="prev" title="排查 kubectl edit 保存失败方法">
+                  <i class="fa fa-angle-left"></i> 排查 kubectl edit 保存失败方法
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/2024/01/16/kubernetes%20%E5%8D%95%E8%8A%82%E7%82%B9%E5%BF%AB%E9%80%9F%E5%AE%89%E8%A3%85/" rel="next" title="Kubernetes 快速拉起单节点集群">
+                  Kubernetes 快速拉起单节点集群 <i class="fa fa-angle-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 
+    <span itemprop="copyrightYear">2024</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">guoltan</span>
+  </div>
+<div class="busuanzi-count">
+    <span class="post-meta-item" id="busuanzi_container_site_uv">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="back-to-top" role="button" aria-label="返回顶部">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js" integrity="sha256-XL2inqUJaslATFnHdJOi9GfQ60on8Wx1C2H8DYiN1xY=" crossorigin="anonymous"></script>
+<script src="/js/comments.js"></script><script src="/js/utils.js"></script><script src="/js/motion.js"></script><script src="/js/next-boot.js"></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/hexo-generator-searchdb/1.4.1/search.js" integrity="sha256-1kfA5uHPf65M5cphT2dvymhkuyHPQp5A53EGZOnOLmc=" crossorigin="anonymous"></script>
+<script src="/js/third-party/search/local-search.js"></script>
+
+
+
+
+
+
+
+  
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+
+
+
+
+</body>
+</html>
