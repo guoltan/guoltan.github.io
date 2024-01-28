@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222"><meta name="generator" content="Hexo 7.1.1">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" integrity="sha256-yIDrPSXHZdOZhAqiBP7CKzIwMQmRCJ8UeB8Jo17YC4o=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"guoltan.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":false,"version":"8.19.1","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12},"copycode":{"enable":false,"style":null},"fold":{"enable":false,"height":500},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false}}</script><script src="/js/config.js"></script>
+
+    <meta name="description" content="1. 背景  在使用 Kubernetes 平台过程中，常常会有搭建私有镜像仓库的需求。而本文主要是记录如何在 Kubernetes 集群上，以 staticpod 的方式快速拉起一个单实例的 registry。以提供容器镜像存储使用。 2. 部署步骤2.1. 创建 registry 需要使用的证书  docker 提供的 registry 默认情况下需要配置 HTTPS 证书，所以我们在搭建前需">
+<meta property="og:type" content="article">
+<meta property="og:title" content="搭建 Kubernetes 私有化镜像仓库 registry">
+<meta property="og:url" content="https://guoltan.github.io/2023/08/15/%E6%90%AD%E5%BB%BA%E7%A7%81%E6%9C%89%E5%8C%96%E9%95%9C%E5%83%8F%E4%BB%93%E5%BA%93%20registry/index.html">
+<meta property="og:site_name" content="guoltan个人博客">
+<meta property="og:description" content="1. 背景  在使用 Kubernetes 平台过程中，常常会有搭建私有镜像仓库的需求。而本文主要是记录如何在 Kubernetes 集群上，以 staticpod 的方式快速拉起一个单实例的 registry。以提供容器镜像存储使用。 2. 部署步骤2.1. 创建 registry 需要使用的证书  docker 提供的 registry 默认情况下需要配置 HTTPS 证书，所以我们在搭建前需">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2023-08-15T10:11:25.000Z">
+<meta property="article:modified_time" content="2024-01-28T12:22:18.244Z">
+<meta property="article:author" content="guoltan">
+<meta property="article:tag" content="K8S">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://guoltan.github.io/2023/08/15/%E6%90%AD%E5%BB%BA%E7%A7%81%E6%9C%89%E5%8C%96%E9%95%9C%E5%83%8F%E4%BB%93%E5%BA%93%20registry/">
+
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://guoltan.github.io/2023/08/15/%E6%90%AD%E5%BB%BA%E7%A7%81%E6%9C%89%E5%8C%96%E9%95%9C%E5%83%8F%E4%BB%93%E5%BA%93%20registry/","path":"2023/08/15/搭建私有化镜像仓库 registry/","title":"搭建 Kubernetes 私有化镜像仓库 registry"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>搭建 Kubernetes 私有化镜像仓库 registry | guoltan个人博客</title>
+  
+
+
+
+
+
+
+
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+<link rel="alternate" href="/atom.xml" title="guoltan个人博客" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">guoltan个人博客</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="搜索" role="button">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a></li><li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a></li><li class="menu-item menu-item-archives"><a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a></li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup"><div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off" maxlength="80"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close" role="button">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div class="search-result-container no-result">
+  <div class="search-result-icon">
+    <i class="fa fa-spinner fa-pulse fa-5x"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#1-%E8%83%8C%E6%99%AF"><span class="nav-number">1.</span> <span class="nav-text">1. 背景</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#2-%E9%83%A8%E7%BD%B2%E6%AD%A5%E9%AA%A4"><span class="nav-number">2.</span> <span class="nav-text">2. 部署步骤</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#2-1-%E5%88%9B%E5%BB%BA-registry-%E9%9C%80%E8%A6%81%E4%BD%BF%E7%94%A8%E7%9A%84%E8%AF%81%E4%B9%A6"><span class="nav-number">2.1.</span> <span class="nav-text">2.1. 创建 registry 需要使用的证书</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#2-1-1-%E5%88%9B%E5%BB%BA%E8%AF%81%E4%B9%A6%E4%BF%A1%E6%81%AF%E6%96%87%E4%BB%B6"><span class="nav-number">2.1.1.</span> <span class="nav-text">2.1.1. 创建证书信息文件</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-1-2-%E5%88%9B%E5%BB%BA%E8%87%AA%E7%AD%BE%E5%90%8D%E8%AF%81%E4%B9%A6"><span class="nav-number">2.1.2.</span> <span class="nav-text">2.1.2. 创建自签名证书</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-2-%E5%88%9B%E5%BB%BA-registry-%E7%9A%84-staticPod"><span class="nav-number">2.2.</span> <span class="nav-text">2.2. 创建 registry 的 staticPod</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-3-%E5%A6%82%E4%BD%95%E8%A7%A3%E5%86%B3%E5%AE%A2%E6%88%B7%E7%AB%AF%E4%B8%8D%E4%BF%A1%E4%BB%BB-registry-%E6%8F%90%E4%BE%9B%E8%87%AA%E7%AD%BE%E5%90%8D%E8%AF%81%E4%B9%A6"><span class="nav-number">2.3.</span> <span class="nav-text">2.3. 如何解决客户端不信任 registry 提供自签名证书</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#2-3-1-%E5%85%B3%E9%97%AD-HTTPS-%E6%A0%A1%E9%AA%8C"><span class="nav-number">2.3.1.</span> <span class="nav-text">2.3.1. 关闭 HTTPS 校验</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-3-2-%E4%B8%BA-containerd-%E6%B7%BB%E5%8A%A0-HTTPS-%E8%AF%81%E4%B9%A6"><span class="nav-number">2.3.2.</span> <span class="nav-text">2.3.2. 为 containerd 添加 HTTPS 证书</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-4-%E9%AA%8C%E8%AF%81%E4%B8%8A%E4%BC%A0%E4%B8%8B%E8%BD%BD%E5%8A%9F%E8%83%BD"><span class="nav-number">2.4.</span> <span class="nav-text">2.4. 验证上传下载功能</span></a></li></ol></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">guoltan</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">9</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-tags">
+          <a href="/tags/">
+        <span class="site-state-item-count">5</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/guoltan" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;guoltan" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:897156356@qq.com" title="E-Mail → mailto:897156356@qq.com" rel="noopener me" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://guoltan.github.io/2023/08/15/%E6%90%AD%E5%BB%BA%E7%A7%81%E6%9C%89%E5%8C%96%E9%95%9C%E5%83%8F%E4%BB%93%E5%BA%93%20registry/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="guoltan">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="guoltan个人博客">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="搭建 Kubernetes 私有化镜像仓库 registry | guoltan个人博客">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          搭建 Kubernetes 私有化镜像仓库 registry
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+
+      <time title="创建时间：2023-08-15 18:11:25" itemprop="dateCreated datePublished" datetime="2023-08-15T18:11:25+08:00">2023-08-15</time>
+    </span>
+
+  
+    <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv">
+      <span class="post-meta-item-icon">
+        <i class="far fa-eye"></i>
+      </span>
+      <span class="post-meta-item-text">阅读次数：</span>
+      <span id="busuanzi_value_page_pv"></span>
+    </span>
+    <span class="post-meta-item" title="本文字数">
+      <span class="post-meta-item-icon">
+        <i class="far fa-file-word"></i>
+      </span>
+      <span class="post-meta-item-text">本文字数：</span>
+      <span>4.9k</span>
+    </span>
+    <span class="post-meta-item" title="阅读时长">
+      <span class="post-meta-item-icon">
+        <i class="far fa-clock"></i>
+      </span>
+      <span class="post-meta-item-text">阅读时长 &asymp;</span>
+      <span>9 分钟</span>
+    </span>
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><h1 id="1-背景"><a href="#1-背景" class="headerlink" title="1. 背景"></a>1. 背景</h1><p>  在使用 Kubernetes 平台过程中，常常会有搭建私有镜像仓库的需求。而本文主要是记录如何在 Kubernetes 集群上，以 staticpod 的方式快速拉起一个单实例的 registry。以提供容器镜像存储使用。</p>
+<h1 id="2-部署步骤"><a href="#2-部署步骤" class="headerlink" title="2. 部署步骤"></a>2. 部署步骤</h1><h2 id="2-1-创建-registry-需要使用的证书"><a href="#2-1-创建-registry-需要使用的证书" class="headerlink" title="2.1. 创建 registry 需要使用的证书"></a>2.1. 创建 registry 需要使用的证书</h2><p>  docker 提供的 registry 默认情况下需要配置 HTTPS 证书，所以我们在搭建前需要先获取 HTTPS 证书。而证书的获取则是通过自签名证书的方式实现。值得注意的是，新版本 go 1.15 以上对证书字段存在要求，必须使用” SAN 字段”。否则在使用过程中，可能会触发下面的错误：</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">error: failed to solve: registry.sealos.hub:5000/library/nginx:latest: failed to do request:</span> <span class="string">Head</span> <span class="attr">&quot;https://registry.sealos.hub:5000/v2/library/nginx/manifests/latest&quot;:</span> <span class="attr">tls: failed to verify certificate: x509:</span> <span class="string">certificate</span> <span class="string">relies</span> <span class="string">on</span> <span class="string">legacy</span> <span class="string">Common</span> <span class="string">Name</span> <span class="string">field,</span> <span class="string">use</span> <span class="string">SANs</span> <span class="string">instead</span></span><br></pre></td></tr></table></figure>
+
+<p>以下是自签名证书实现的过程。</p>
+<h3 id="2-1-1-创建证书信息文件"><a href="#2-1-1-创建证书信息文件" class="headerlink" title="2.1.1. 创建证书信息文件"></a>2.1.1. 创建证书信息文件</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line"># 创建证书信息文件 openssl.cnf</span><br><span class="line"># 其中 alt_names 的 IP、DNS 字段可以根据实际需要去增加和修改。</span><br><span class="line"></span><br><span class="line">[req]</span><br><span class="line">req_extensions = v3_req</span><br><span class="line">distinguished_name = req_distinguished_name</span><br><span class="line"></span><br><span class="line">[req_distinguished_name]</span><br><span class="line">countryName = Country Name (2 letter code)</span><br><span class="line">countryName_default = XX</span><br><span class="line">stateOrProvinceName = State or Province Name (full name)</span><br><span class="line">stateOrProvinceName_default = YourState</span><br><span class="line">localityName = Locality Name (eg, city)</span><br><span class="line">localityName_default = YourCity</span><br><span class="line">organizationName = Organization Name (eg, company)</span><br><span class="line">organizationName_default = YourCompany</span><br><span class="line">commonName = Common Name (e.g. server FQDN or YOUR name)</span><br><span class="line">commonName_max = 64</span><br><span class="line"></span><br><span class="line">[v3_req]</span><br><span class="line">subjectAltName = @alt_names</span><br><span class="line"></span><br><span class="line">[alt_names]</span><br><span class="line">DNS.1 = sealos.hub</span><br><span class="line">DNS.2 = registry.sealos.hub</span><br><span class="line">IP.1 = 192.168.214.101</span><br><span class="line">IP.2 = 192.168.214.1</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-1-2-创建自签名证书"><a href="#2-1-2-创建自签名证书" class="headerlink" title="2.1.2. 创建自签名证书"></a>2.1.2. 创建自签名证书</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 生成私钥文件</span></span><br><span class="line">openssl genpkey -algorithm RSA -out registry.key</span><br><span class="line"></span><br><span class="line"><span class="comment"># 生成证书签名（CSR）文件，一直回车</span></span><br><span class="line">openssl req -new -key registry.key -out registry.csr -config openssl.cnf</span><br><span class="line"></span><br><span class="line"><span class="comment"># 使用私钥和配置文件生成自签名证书</span></span><br><span class="line">openssl x509 -req -signkey registry.key -<span class="keyword">in</span> registry.csr -out registry.crt -extensions v3_req -extfile openssl.cnf -days 36500</span><br></pre></td></tr></table></figure>
+
+<h2 id="2-2-创建-registry-的-staticPod"><a href="#2-2-创建-registry-的-staticPod" class="headerlink" title="2.2. 创建 registry 的 staticPod"></a>2.2. 创建 registry 的 staticPod</h2><p>  新建 registry.yaml 文件，存放在 &#x2F;etc&#x2F;kubernetes&#x2F;manifests&#x2F; 目录下，内容如下</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">apiVersion:</span> <span class="string">v1</span></span><br><span class="line"><span class="attr">kind:</span> <span class="string">Pod</span></span><br><span class="line"><span class="attr">metadata:</span></span><br><span class="line">  <span class="attr">creationTimestamp:</span> <span class="literal">null</span></span><br><span class="line">  <span class="attr">labels:</span></span><br><span class="line">    <span class="attr">component:</span> <span class="string">registry</span></span><br><span class="line">  <span class="attr">name:</span> <span class="string">registry</span></span><br><span class="line">  <span class="attr">namespace:</span> <span class="string">kube-system</span></span><br><span class="line"><span class="attr">spec:</span></span><br><span class="line">  <span class="attr">containers:</span></span><br><span class="line">    <span class="bullet">-</span> <span class="attr">image:</span> <span class="string">registry:2</span></span><br><span class="line">      <span class="attr">name:</span> <span class="string">private-repository-k8s</span></span><br><span class="line">      <span class="attr">imagePullPolicy:</span> <span class="string">IfNotPresent</span></span><br><span class="line">      <span class="attr">env:</span></span><br><span class="line">      <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">REGISTRY_HTTP_TLS_CERTIFICATE</span></span><br><span class="line">        <span class="attr">value:</span> <span class="string">&quot;/certs/registry.crt&quot;</span></span><br><span class="line">      <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">REGISTRY_HTTP_TLS_KEY</span></span><br><span class="line">        <span class="attr">value:</span> <span class="string">&quot;/certs/registry.key&quot;</span></span><br><span class="line">      <span class="attr">ports:</span></span><br><span class="line">        <span class="bullet">-</span> <span class="attr">containerPort:</span> <span class="number">5000</span></span><br><span class="line">      <span class="attr">volumeMounts:</span></span><br><span class="line">        <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">certs-vol</span></span><br><span class="line">          <span class="attr">mountPath:</span> <span class="string">/certs</span></span><br><span class="line">        <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">registry-vol</span></span><br><span class="line">          <span class="attr">mountPath:</span> <span class="string">/var/lib/registry</span></span><br><span class="line">  <span class="attr">hostNetwork:</span> <span class="literal">true</span></span><br><span class="line">  <span class="attr">priorityClassName:</span> <span class="string">system-node-critical</span></span><br><span class="line">  <span class="attr">volumes:</span></span><br><span class="line">  <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">certs-vol</span></span><br><span class="line">    <span class="attr">hostPath:</span></span><br><span class="line">      <span class="attr">path:</span> <span class="string">/opt/certs</span></span><br><span class="line">      <span class="attr">type:</span> <span class="string">Directory</span></span><br><span class="line">  <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">registry-vol</span></span><br><span class="line">    <span class="attr">hostPath:</span></span><br><span class="line">      <span class="attr">path:</span> <span class="string">/opt/registry</span></span><br><span class="line">      <span class="attr">type:</span> <span class="string">Directory</span></span><br><span class="line"><span class="attr">status:</span> &#123;&#125;</span><br></pre></td></tr></table></figure>
+
+<p>  此处的 volumes 字段，certs-vol、registry-vol 的 path 路径可以根据实际存储位置进行调整。</p>
+<p>  执行完成以后，通过 kubectl get pod -n kube-system -o wide | grep registry，就可以看到创建出的 registry pod。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">[root@k8s-master01certs]<span class="comment"># kubectl get pod -n kube-system -o wide | grep registry</span></span><br><span class="line">registry-k8s-master01                      1/1     Running   2          4h36m   192.168.214.101   k8s-master01   &lt;none&gt;           &lt;none&gt;</span><br></pre></td></tr></table></figure>
+
+<h2 id="2-3-如何解决客户端不信任-registry-提供自签名证书"><a href="#2-3-如何解决客户端不信任-registry-提供自签名证书" class="headerlink" title="2.3. 如何解决客户端不信任 registry 提供自签名证书"></a>2.3. 如何解决客户端不信任 registry 提供自签名证书</h2><p>  经过上述步骤以后，此时可以通过 nerdctl push 测试镜像推送，如果是自签名证书，此时可能会触发如下报错</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">tls: failed to verify certificate: x509: certificate signed by unknown authority</span><br></pre></td></tr></table></figure>
+
+<p>  这是因为客户端没有信任 registry 提供的 HTTPS 证书导致的，对于这种问题，可解决的方法：</p>
+<ul>
+<li><p>关闭客户端的 HTTPS 校验功能，忽略不受信任。– 对于测试、学习环境，可以通过该方式快速解决。</p>
+</li>
+<li><p>通过配置客户端，将自签名证书添加到受信任的证书列表。 – 虽然操作起来比较复杂，但这种方式相对安全的多。</p>
+<p>需要提醒的是笔者使用的是 containerd 而非 docker，所以操作方式以 containerd 为例。</p>
+</li>
+</ul>
+<h3 id="2-3-1-关闭-HTTPS-校验"><a href="#2-3-1-关闭-HTTPS-校验" class="headerlink" title="2.3.1. 关闭 HTTPS 校验"></a>2.3.1. 关闭 HTTPS 校验</h3><p>  参考如下方法来完成 HTTPS 校验关闭的动作</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 编辑 /etc/containerd/config.toml 追加如下配置</span></span><br><span class="line">    [plugins.<span class="string">&quot;io.containerd.grpc.v1.cri&quot;</span>.registry]</span><br><span class="line">      [plugins.<span class="string">&quot;io.containerd.grpc.v1.cri&quot;</span>.registry.configs.<span class="string">&quot;registry.sealos.hub:5000&quot;</span>.tls]</span><br><span class="line">        insecure_skip_verify = <span class="literal">true</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 环境可能默认没有 /etc/containerd/config.toml 文件，可以通过 containerd config dump &gt; /etc/containerd/config.toml 去生成</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="2-3-2-为-containerd-添加-HTTPS-证书"><a href="#2-3-2-为-containerd-添加-HTTPS-证书" class="headerlink" title="2.3.2. 为 containerd 添加 HTTPS 证书"></a>2.3.2. 为 containerd 添加 HTTPS 证书</h3><p>   我们可以将 HTTPS 证书放置在 &#x2F;etc&#x2F;containerd&#x2F;certs.d 目录下，需要在所有 node 上执行这个动作。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 如果没有 /etc/containerd/certs.d 目录，则需要创建</span></span><br><span class="line"><span class="built_in">mkdir</span> -p /etc/containerd/certs.d</span><br><span class="line"><span class="comment"># 将 2.1.2. 生成的上传证书文件到 /etc/containerd/certs.d/ 目录下</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 如果环境配置了 buildkitd，此时也需要追加证书</span></span><br><span class="line">修改 buildkitd 配置文件的内容 /etc/buildkit/buildkitd.toml</span><br><span class="line"></span><br><span class="line"><span class="comment"># 添加如下内容，将对应镜像仓库信息、证书路径写入</span></span><br><span class="line">[registry.<span class="string">&quot;registry.sealos.hub:5000&quot;</span>]</span><br><span class="line">  http = <span class="literal">false</span></span><br><span class="line">  insecure = <span class="literal">false</span></span><br><span class="line">  ca=[<span class="string">&quot;/opt/certs/registry.crt&quot;</span>]</span><br><span class="line">  [[registry.<span class="string">&quot;registry.sealos.hub:5000&quot;</span>.keypair]]</span><br><span class="line">    key=<span class="string">&quot;/opt/certs/registry.key&quot;</span></span><br><span class="line">    cert=<span class="string">&quot;/opt/certs/registry.crt&quot;</span></span><br><span class="line">[worker.containerd]</span><br><span class="line">  namespace = <span class="string">&quot;k8s.io&quot;</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="2-4-验证上传下载功能"><a href="#2-4-验证上传下载功能" class="headerlink" title="2.4. 验证上传下载功能"></a>2.4. 验证上传下载功能</h2><p>  经过上述的步骤以后，就可以在客户端侧进行镜像的推拉测试，测试无误后。至此镜像仓库搭建已完成。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 从公网拉取镜像</span></span><br><span class="line"><span class="comment"># 修改 tag</span></span><br><span class="line">nerdctl --namespace k8s.io tag daocloud.io/nginx:latest registry.sealos.hub:5000/library/nginx:latest</span><br><span class="line"><span class="comment"># 推送</span></span><br><span class="line">nerdctl --namespace k8s.io push registry.sealos.hub:5000/library/nginx:latest</span><br><span class="line"><span class="comment"># 拉取镜像</span></span><br><span class="line">nerdctl --namespace k8s.io registry.sealos.hub:5000/library/nginx:latest</span><br></pre></td></tr></table></figure>
+
+<p>参考链接：</p>
+<p><a target="_blank" rel="noopener" href="https://github.com/moby/buildkit/blob/master/docs/buildkitd.toml.md">https://github.com/moby/buildkit/blob/master/docs/buildkitd.toml.md</a></p>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/K8S/" rel="tag"># K8S</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/2022/09/10/%E5%A6%82%E4%BD%95%E6%9F%A5%E7%9C%8B%E6%9F%90%E8%BF%9B%E7%A8%8B%E5%BB%BA%E7%AB%8B%E7%9A%84%E8%BF%9E%E6%8E%A5%E4%BF%A1%E6%81%AF/" rel="prev" title="如何查看某进程建立的连接信息">
+                  <i class="fa fa-angle-left"></i> 如何查看某进程建立的连接信息
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/2024/01/16/kubernetes%20%E5%8D%95%E8%8A%82%E7%82%B9%E5%BF%AB%E9%80%9F%E5%AE%89%E8%A3%85/" rel="next" title="Kubernetes 快速拉起单节点集群">
+                  Kubernetes 快速拉起单节点集群 <i class="fa fa-angle-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 
+    <span itemprop="copyrightYear">2024</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">guoltan</span>
+  </div>
+<div class="busuanzi-count">
+    <span class="post-meta-item" id="busuanzi_container_site_uv">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="back-to-top" role="button" aria-label="返回顶部">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js" integrity="sha256-XL2inqUJaslATFnHdJOi9GfQ60on8Wx1C2H8DYiN1xY=" crossorigin="anonymous"></script>
+<script src="/js/comments.js"></script><script src="/js/utils.js"></script><script src="/js/motion.js"></script><script src="/js/next-boot.js"></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/hexo-generator-searchdb/1.4.1/search.js" integrity="sha256-1kfA5uHPf65M5cphT2dvymhkuyHPQp5A53EGZOnOLmc=" crossorigin="anonymous"></script>
+<script src="/js/third-party/search/local-search.js"></script>
+
+
+
+
+
+
+
+  
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+
+
+
+
+</body>
+</html>
