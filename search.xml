@@ -363,4 +363,26 @@
         <tag>K8S</tag>
       </tags>
   </entry>
+  <entry>
+    <title>如何查看进程属于哪个容器</title>
+    <url>/2023/09/11/%E5%A6%82%E4%BD%95%E6%9F%A5%E7%9C%8B%E8%BF%9B%E7%A8%8B%E5%B1%9E%E4%BA%8E%E5%93%AA%E4%B8%AA%E5%AE%B9%E5%99%A8/</url>
+    <content><![CDATA[<h2 id="1-背景"><a href="#1-背景" class="headerlink" title="1. 背景"></a><strong>1.</strong> 背景</h2><p> 项目上可能会遇到一种场景，运维同学反馈某几个进程存在异常（CPU、内存占用率过高），希望定位出这些进程是哪些业务去创建的此时可以根据本文的处理方法进行诊断。</p>
+<h2 id="2-处理方法"><a href="#2-处理方法" class="headerlink" title="2. 处理方法"></a>2. 处理方法</h2><h3 id="2-1-方法一：查看各个容器环境中，是否有对应进程名称在运行"><a href="#2-1-方法一：查看各个容器环境中，是否有对应进程名称在运行" class="headerlink" title="2.1. 方法一：查看各个容器环境中，是否有对应进程名称在运行"></a>2.1. 方法一：查看各个容器环境中，是否有对应进程名称在运行</h3><p>执行如下指令获取各个容器中运行的进程</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">for id in $(docker ps -q | xargs); do echo echo &quot;----$id----&quot; ; docker top $id | grep 进程名称 ; done</span><br></pre></td></tr></table></figure>
+
+<p>将获取到有回显的结果，进一步执行 docker ps -a | grep $id 来确认容器名称</p>
+<p> </p>
+<p>kubernetes 的容器命名规则： <code>k8s_&#123;containerName&#125;_&#123;podFullName&#125;_&#123;namespace&#125;_&#123;podUID&#125;_&#123;podrestartCount&#125;</code></p>
+<p>通过 docker ps 获取到的容器名称，根据 podFullName 和 namespace 的命名，我们就能判断这个容器属于哪个命名空间下。</p>
+<p> </p>
+<h3 id="2-2-方法二：通过进程当前的-cgroup-判断它属于哪个容器或者-Pod"><a href="#2-2-方法二：通过进程当前的-cgroup-判断它属于哪个容器或者-Pod" class="headerlink" title="2.2. 方法二：通过进程当前的 cgroup 判断它属于哪个容器或者 Pod"></a><strong>2.2.</strong> 方法二：通过进程当前的 cgroup 判断它属于哪个容器或者 Pod</h3><p>通过查看 &#x2F;proc&#x2F;PID&#x2F;cgroup 文件，通过其中的pod字段来确认进程是否属于容器环境</p>
+<p>cat &#x2F;proc&#x2F;xxxx&#x2F;cgroup</p>
+<h2 id="3-示例：获取某个进程的-PID，该-PID-属于运行在容器环境"><a href="#3-示例：获取某个进程的-PID，该-PID-属于运行在容器环境" class="headerlink" title="3. 示例：获取某个进程的 PID，该 PID 属于运行在容器环境"></a>3. 示例：获取某个进程的 PID，该 PID 属于运行在容器环境</h2><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">[root@master1 ~]# cat /proc/7644/cgroup</span><br><span class="line"></span><br><span class="line">11:cpuset:/kubepods/besteffort/podda498366ad0b5d5f487968aaa924c6ab/7f77d3c235e601df71a70530fee4677230a768bd4442d46bad27210f6e520edc</span><br><span class="line"></span><br><span class="line">10:perf_event:/kubepods/besteffort/podda498366ad0b5d5f487968aaa924c6ab/7f77d3c235e601df71a70530fee4677230a768bd4442d46bad27210f6e520edc</span><br><span class="line"></span><br><span class="line">9:memory:/kubepods/besteffort/podda498366ad0b5d5f487968aaa924c6ab/7f77d3c235e601df71a70530fee4677230a768bd4442d46bad27210f6e520edc</span><br><span class="line"></span><br><span class="line">8:hugetlb:/kubepods/besteffort/podda498366ad0b5d5f487968aaa924c6ab/7f77d3c235e601df71a70530fee4677230a768bd4442d46bad27210f6e520edc</span><br><span class="line"></span><br><span class="line">7:devices:/kubepods/besteffort/podda498366ad0b5d5f487968aaa924c6ab/7f77d3c235e601df71a70530fee4677230a768bd4442d46bad27210f6e520edc</span><br><span class="line"></span><br><span class="line">6:pids:/kubepods/besteffort/podda498366ad0b5d5f487968aaa924c6ab/7f77d3c235e601df71a70530fee4677230a768bd4442d46bad27210f6e520edc</span><br><span class="line"></span><br><span class="line">5:freezer:/kubepods/besteffort/podda498366ad0b5d5f487968aaa924c6ab/7f77d3c235e601df71a70530fee4677230a768bd4442d46bad27210f6e520edc</span><br><span class="line"></span><br><span class="line">4:net_prio,net_cls:/kubepods/besteffort/podda498366ad0b5d5f487968aaa924c6ab/7f77d3c235e601df71a70530fee4677230a768bd4442d46bad27210f6e520edc</span><br><span class="line"></span><br><span class="line">3:blkio:/kubepods/besteffort/podda498366ad0b5d5f487968aaa924c6ab/7f77d3c235e601df71a70530fee4677230a768bd4442d46bad27210f6e520edc</span><br><span class="line"></span><br><span class="line">2:cpuacct,cpu:/kubepods/besteffort/podda498366ad0b5d5f487968aaa924c6ab/7f77d3c235e601df71a70530fee4677230a768bd4442d46bad27210f6e520edc</span><br><span class="line"></span><br><span class="line">1:name=systemd:/kubepods/besteffort/podda498366ad0b5d5f487968aaa924c6ab/7f77d3c235e601df71a70530fee4677230a768bd4442d46bad27210f6e520edc</span><br></pre></td></tr></table></figure>
+
+<p>其中 podda498366ad0b5d5f487968aaa924c6ab 就是该进程所属的 pod，此时通过 docker ps -a | grep da4983 可以确认进程所属容器</p>
+]]></content>
+      <tags>
+        <tag>K8S</tag>
+      </tags>
+  </entry>
 </search>
