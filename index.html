@@ -148,7 +148,7 @@
   <nav class="site-state">
       <div class="site-state-item site-state-posts">
         <a href="/archives/">
-          <span class="site-state-item-count">10</span>
+          <span class="site-state-item-count">11</span>
           <span class="site-state-item-name">日志</span>
         </a>
       </div>
@@ -996,6 +996,123 @@
   
 
   <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="">
+    <link itemprop="mainEntityOfPage" href="https://guoltan.github.io/2022/01/17/Evicted/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="guoltan">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="guoltan个人博客">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="undefined | guoltan个人博客">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          <a href="/2022/01/17/Evicted/" class="post-title-link" itemprop="url">Pod 状态 Evicted 处理思路</a>
+        </h2>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+
+      <time title="创建时间：2022-01-17 18:00:15" itemprop="dateCreated datePublished" datetime="2022-01-17T18:00:15+08:00">2022-01-17</time>
+    </span>
+
+  
+    <span class="post-meta-item" title="本文字数">
+      <span class="post-meta-item-icon">
+        <i class="far fa-file-word"></i>
+      </span>
+      <span class="post-meta-item-text">本文字数：</span>
+      <span>5.6k</span>
+    </span>
+    <span class="post-meta-item" title="阅读时长">
+      <span class="post-meta-item-icon">
+        <i class="far fa-clock"></i>
+      </span>
+      <span class="post-meta-item-text">阅读时长 &asymp;</span>
+      <span>10 分钟</span>
+    </span>
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+          <h1 id="1-现象描述"><a href="#1-现象描述" class="headerlink" title="1. 现象描述"></a><strong>1. 现象描述</strong></h1><p>如果 Pod 处于 Evicted 状态，这意味着当前集群有部分节点存在压力，可能这些节点是内存、磁盘、PID等资源不足，此时需要通过kubectl describe pod名称 -n 命名空间 获取该 Pod 相关的 Events。基于 Events 给出的信息来处理。实例输出如下</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line">[root@tke-192-168-0-2 ~]# kubectl describe pod -n cpaas-system warlock-84fdf6cd9b-vkgkz</span><br><span class="line">Name:                 warlock-84fdf6cd9b-vkgkz</span><br><span class="line">Namespace:            cpaas-system</span><br><span class="line">Priority:             1000000</span><br><span class="line">Priority Class Name:  high-priority</span><br><span class="line">Node:                 192.168.0.25</span><br><span class="line">Start Time:           Wed, 03 Nov 2021 09:36:35 +0800</span><br><span class="line">Labels:               app=warlock</span><br><span class="line">                      chart=cpaas-monitor</span><br><span class="line">                      pod-template-hash=84fdf6cd9b</span><br><span class="line">                      service_name=warlock</span><br><span class="line">                      version=v1</span><br><span class="line">Annotations:          ovn.kubernetes.io/allocated: true</span><br><span class="line">                      ovn.kubernetes.io/cidr: 10.199.0.0/16</span><br><span class="line">                      ovn.kubernetes.io/gateway: 10.199.0.1</span><br><span class="line">                      ovn.kubernetes.io/ip_address: 10.199.15.74</span><br><span class="line">                      ovn.kubernetes.io/logical_switch: ovn-default</span><br><span class="line">                      ovn.kubernetes.io/mac_address: 00:00:00:CD:F8:38</span><br><span class="line">                      ovn.kubernetes.io/network_types: geneve</span><br><span class="line">                      ovn.kubernetes.io/routed: true</span><br><span class="line">Status:               Failed</span><br><span class="line">Reason:               Evicted</span><br><span class="line">Message:              Pod The node had condition: [DiskPressure]. # 对于 Evicted 的 Pod，重点关注 Message 字段的内容，通过该字段判断原因。从示例来看，问题出节点触发了 DiskPressure。</span><br><span class="line">IP:</span><br><span class="line">IPs:                  </span><br><span class="line">Controlled By:        ReplicaSet/warlock-84fdf6cd9b</span><br><span class="line">...</span><br></pre></td></tr></table></figure>
+
+<h1 id="2-排查思路"><a href="#2-排查思路" class="headerlink" title="2. 排查思路"></a><strong>2. 排查思路</strong></h1><h2 id="2-1-节点资源类"><a href="#2-1-节点资源类" class="headerlink" title="2.1. 节点资源类"></a><strong>2.1. 节点资源类</strong></h2><h3 id="2-1-1-磁盘空间不足"><a href="#2-1-1-磁盘空间不足" class="headerlink" title="2.1.1. 磁盘空间不足"></a><strong>2.1.1. 磁盘空间不足</strong></h3><h4 id="2-1-1-1-故障现象"><a href="#2-1-1-1-故障现象" class="headerlink" title="2.1.1.1. 故障现象"></a><strong>2.1.1.1. 故障现象</strong></h4><p>通过 kubectl describe pod 获取到的错误信息如下，关键字段在 Message 处，关键字段 The node was low on resource</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 示例输出</span></span><br><span class="line">[root@k8s-1 ~]<span class="comment"># kubectl describe pod nginx-6db6848cf4-gr46n</span></span><br><span class="line">....</span><br><span class="line">Status:         Failed</span><br><span class="line">Reason:         Evicted</span><br><span class="line">Message:        The node was low on resource: ephemeral-storage. Container nginx was using 5594, <span class="built_in">which</span> exceeds its request of 0.</span><br><span class="line">...</span><br><span class="line">Events:</span><br><span class="line">  Type     Reason            Age    From               Message</span><br><span class="line">  ----     ------            ----   ----               -------</span><br><span class="line">  Normal   Scheduled         2m40s  default-scheduler  Successfully assigned default/nginx-6db6848cf4-gr46n to k8s-2</span><br><span class="line">  Normal   Pulling           2m38s  kubelet            Pulling image <span class="string">&quot;daocloud.io/nginx&quot;</span></span><br><span class="line">  Normal   Pulled            2m38s  kubelet            Successfully pulled image <span class="string">&quot;daocloud.io/nginx&quot;</span> <span class="keyword">in</span> 572.503087ms</span><br><span class="line">  Normal   Created           2m38s  kubelet            Created container nginx</span><br><span class="line">  Normal   Started           2m38s  kubelet            Started container nginx</span><br><span class="line">  Warning  Evicted           60s    kubelet            The node was low on resource: ephemeral-storage. Container nginx was using 5594, <span class="built_in">which</span> exceeds its request of 0.</span><br><span class="line">  Normal   Killing           60s    kubelet            Stopping container nginx</span><br></pre></td></tr></table></figure>
+
+<h4 id="2-1-1-2-处理思路"><a href="#2-1-1-2-处理思路" class="headerlink" title="2.1.1.2. 处理思路"></a><strong>2.1.1.2. 处理思路</strong></h4><p>从 low on resource 反馈的资源类型来判断是内存不足、磁盘空间不足还是 PID 不足。从现网处理的案例来看，基本上都是磁盘不足引起的问题。对于磁盘空间不足的场景，需要登录到异常节点上，通过 dh 查询各个目录的使用空间，定位到占用容量的文件，并通过释放或者扩容的手段处理。</p>
+<p>磁盘压力分为 <strong>根文件系统</strong> 和 <strong>映像文件系统</strong> 这两种，映像文件系统指的是 docker 或者其他 CRI 的数据盘。对于 TKE 来说通常会单独给 &#x2F;var&#x2F;lib&#x2F;docker 单独挂盘，TCNP 会给 &#x2F;data 单独挂盘。</p>
+<p>默认情况下，<strong>根分区文件系统的使用容量达到 90%</strong> 或者 inodes 达到 95% 就会触发驱逐，并自动打上污点。<strong>映像文件系统则是使用容量达到 85%</strong> 就会触发驱逐并自动打上污点。</p>
+<p>从现网的处理经验来看，造成磁盘容量使用率高的原因，通常原因如下：</p>
+<ul>
+<li><p>产品出包的配置误将日志输出到根分区，常出现在 TI 产品，当我们追查到空间使用率来源于组件日志时，需要拉起后端同学确认，擦看是否可以先清理掉过期的日志，再整改日志存放路径。</p>
+</li>
+<li><p>相关同学在初始化节点时操作不正确，未正确挂载数据盘。导致后续数据全部写入到了根分区，造成根分区磁盘压力大。</p>
+</li>
+<li><p>相关同学在初期部署时将所有物料到根分区，造成磁盘空间不足。</p>
+</li>
+<li><p>初期交付时磁盘空间规划较小。该类场景比较容易导致磁盘爆满。</p>
+</li>
+</ul>
+<h4 id="2-1-1-3-处理步骤"><a href="#2-1-1-3-处理步骤" class="headerlink" title="2.1.1.3. 处理步骤"></a><strong>2.1.1.3. 处理步骤</strong></h4><p><strong>1、登录到故障节点</strong></p>
+<p><code>通过 ssh 用户名@IP 进行连接，细节略</code></p>
+<p><strong>2、查询磁盘使用率</strong></p>
+<p><code>通过 df | grep -v -E &quot;overlay|shm|tmpfs&quot; 可以获取节点当前磁盘使用的情况。</code></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 示例输出，这个环境不存在 DiskPressure</span></span><br><span class="line">[root@tke-192-168-0-2 ~]<span class="comment"># df | grep -v -E &quot;overlay|shm|tmpfs&quot;</span></span><br><span class="line">Filesystem                 1K-blocks      Used Available Use% Mounted on</span><br><span class="line">/dev/vda1                  154685884  83911048  64383392  57% /          <span class="comment"># 如果根分区超过 90% 就会触发驱逐</span></span><br><span class="line">/dev/mapper/vgdata-lv_data 524027908 409582764 114445144  79% /data/platform</span><br><span class="line">ceph-fuse                  775245824 416186368 359059456  54% /data/platform-fs</span><br><span class="line">通过 <span class="built_in">df</span> -i | grep -v -E <span class="string">&quot;overlay|shm|tmpfs&quot;</span> 可以获取节点当前磁盘 inodes 使用的情况。</span><br><span class="line"></span><br><span class="line"><span class="comment"># 示例输出，注：这个环境不存在 DiskPressure</span></span><br><span class="line">[root@tke-192-168-0-2 ~]<span class="comment"># df -i | grep -v -E &quot;overlay|shm|tmpfs&quot;</span></span><br><span class="line">Filesystem                    Inodes   IUsed     IFree IUse% Mounted on</span><br><span class="line">/dev/vda1                    9830400  313679   9516721    4% /</span><br><span class="line">/dev/mapper/vgdata-lv_data 231136976 2412258 228724718    2% /data/platform</span><br><span class="line">ceph-fuse                      33487   33487         0  100% /data/platform-fs</span><br></pre></td></tr></table></figure>
+
+<p><strong>3、定位占用磁盘空间的文件</strong></p>
+<p><strong>a. 确认各个目录的空间占用率</strong></p>
+<p>通过 du -h –max-depth&#x3D;1 &#x2F; 可以获取节点当前磁盘使用的情况。通过这个方法我们可以追查磁盘使用率是来源于哪些目录。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 示例输出</span></span><br><span class="line">[root@k8s ~]<span class="comment"># du -h --max-depth=1 /</span></span><br><span class="line">118M    /boot</span><br><span class="line">0       /dev</span><br><span class="line"><span class="built_in">du</span>: cannot access ‘/proc/5891’: No such file or directory</span><br><span class="line"><span class="built_in">du</span>: cannot access ‘/proc/5944/task/5944/fd/3’: No such file or directory</span><br><span class="line"><span class="built_in">du</span>: cannot access ‘/proc/5944/task/5944/fdinfo/3’: No such file or directory</span><br><span class="line"><span class="built_in">du</span>: cannot access ‘/proc/5944/fd/4’: No such file or directory</span><br><span class="line"><span class="built_in">du</span>: cannot access ‘/proc/5944/fdinfo/4’: No such file or directory</span><br><span class="line">0       /proc</span><br><span class="line">794M    /run</span><br><span class="line">0       /sys</span><br><span class="line">36M     /etc</span><br><span class="line">29G     /root  <span class="comment"># 空间使用率较高，从此处可以看到，根分区的空间基本上是被 /root 使用掉了。</span></span><br><span class="line">754M    /var</span><br><span class="line">4.0K    /tmp</span><br><span class="line">1.5G    /usr</span><br><span class="line">0       /home</span><br><span class="line">0       /media</span><br><span class="line">0       /mnt</span><br><span class="line">88M     /opt</span><br><span class="line">0       /srv</span><br><span class="line">33G     /</span><br></pre></td></tr></table></figure>
+
+<p>通过 du 追查到一级目录以后，再一步一步的追查，示例中是 &#x2F;root 使用空间较大，后续再通过 du -h –max-depth&#x3D;1 &#x2F;root 进一步的获取空间使用情况。循序渐进找到源头。</p>
+<p><strong>b. 确认是否存在未释放 Evicted Pod</strong></p>
+<p>在确认节点资源问题已解决后，各个业务 Pod 应该重新调度。此时需要将这些 Evicted 的 Pod 释放掉。执行如下指令完成</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 生产不要直接复制~~~~</span></span><br><span class="line"><span class="keyword">for</span> ns <span class="keyword">in</span> `kubectl get ns |awk <span class="string">&#x27;NR&gt;1&#123;print $1&#125;&#x27;</span>` ;<span class="keyword">do</span> kubectl get pod -n &#123;ns&#125; |grep Evicted |awk <span class="string">&#x27;&#123;print 1&#125;&#x27;</span>|xargs kubectl delete pod -n <span class="variable">$&#123;ns&#125;</span> ;<span class="keyword">done</span></span><br></pre></td></tr></table></figure>
+
+      
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+        <div class="post-eof"></div>
+      
+    </footer>
+  </article>
+</div>
+
+
+
+
+    
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="">
     <link itemprop="mainEntityOfPage" href="https://guoltan.github.io/2020/11/16/Node%20NotReady%20%E6%8E%92%E6%9F%A5%E6%8C%87%E5%BC%95/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
@@ -1171,142 +1288,9 @@
 
 
 
-    
-
-
-<div class="post-block">
-  
-  
-
-  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="">
-    <link itemprop="mainEntityOfPage" href="https://guoltan.github.io/2020/09/25/chrony%E4%B8%BB%E6%9C%BA%E6%97%B6%E9%92%9F%E5%90%8C%E6%AD%A5/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.gif">
-      <meta itemprop="name" content="guoltan">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="guoltan个人博客">
-      <meta itemprop="description" content="">
-    </span>
-
-    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
-      <meta itemprop="name" content="undefined | guoltan个人博客">
-      <meta itemprop="description" content="">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          <a href="/2020/09/25/chrony%E4%B8%BB%E6%9C%BA%E6%97%B6%E9%92%9F%E5%90%8C%E6%AD%A5/" class="post-title-link" itemprop="url">chrony主机时钟同步</a>
-        </h2>
-
-        <div class="post-meta-container">
-          <div class="post-meta">
-    <span class="post-meta-item">
-      <span class="post-meta-item-icon">
-        <i class="far fa-calendar"></i>
-      </span>
-      <span class="post-meta-item-text">发表于</span>
-
-      <time title="创建时间：2020-09-25 18:00:25" itemprop="dateCreated datePublished" datetime="2020-09-25T18:00:25+08:00">2020-09-25</time>
-    </span>
-
-  
-    <span class="post-meta-item" title="本文字数">
-      <span class="post-meta-item-icon">
-        <i class="far fa-file-word"></i>
-      </span>
-      <span class="post-meta-item-text">本文字数：</span>
-      <span>3.3k</span>
-    </span>
-    <span class="post-meta-item" title="阅读时长">
-      <span class="post-meta-item-icon">
-        <i class="far fa-clock"></i>
-      </span>
-      <span class="post-meta-item-text">阅读时长 &asymp;</span>
-      <span>6 分钟</span>
-    </span>
-</div>
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-          <ol>
-<li>安装 chrony</li>
-</ol>
-<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">yum -y install chrony</span><br></pre></td></tr></table></figure>
-
-<ol start="2">
-<li>配置 chrony</li>
-</ol>
-<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">vi /etc/chrony.conf</span><br><span class="line"><span class="meta prompt_"></span></span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">找到 server 区块，全注释，替换为 aliyun 时钟源</span></span><br><span class="line"></span><br><span class="line">server ntp1.aliyun.com iburst</span><br><span class="line">server ntp2.aliyun.com iburst</span><br><span class="line">server ntp3.aliyun.com iburst</span><br><span class="line">server ntp4.aliyun.com iburst</span><br></pre></td></tr></table></figure>
-
-<ol start="3">
-<li>启动 chrony 并设置开机自启动</li>
-</ol>
-<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">systemctl enable chronyd</span><br><span class="line">systemctl start chronyd</span><br></pre></td></tr></table></figure>
-
-<ol start="4">
-<li>修改时区、查看时区</li>
-</ol>
-<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta prompt_"># </span><span class="language-bash">设置时区为上海</span></span><br><span class="line">timedatectl set-timezone Asia/Shanghai</span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">查看当前时区和时钟同步情况</span></span><br><span class="line">timedatectl status</span><br></pre></td></tr></table></figure>
-
-<ol start="5">
-<li>配置硬件时钟和系统时钟一致</li>
-</ol>
-<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta prompt_"># </span><span class="language-bash">如果是配置系统时钟和硬件时钟保持一致，则可以使用 -s 参数</span></span><br><span class="line">hwclock -w</span><br></pre></td></tr></table></figure>
-
-<ol start="6">
-<li>chronyc 运维指令</li>
-</ol>
-<p><strong>查看当前机器同步的 ntp 服务器</strong></p>
-<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">chronyc sources -v</span><br></pre></td></tr></table></figure>
-
-<p>  示例输出：</p>
-<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">[root@cloud-master01 kube-prometheus]# chronyc sources -v</span><br><span class="line">210 Number of sources = 1</span><br><span class="line"></span><br><span class="line">  .-- Source mode  &#x27;^&#x27; = server, &#x27;=&#x27; = peer, &#x27;#&#x27; = local clock.</span><br><span class="line"> / .- Source state &#x27;*&#x27; = current synced, &#x27;+&#x27; = combined , &#x27;-&#x27; = not combined,</span><br><span class="line">| /   &#x27;?&#x27; = unreachable, &#x27;x&#x27; = time may be in error, &#x27;~&#x27; = time too variable.</span><br><span class="line">||                                                 .- xxxx [ yyyy ] +/- zzzz</span><br><span class="line">||      Reachability register (octal) -.           |  xxxx = adjusted offset,</span><br><span class="line">||      Log2(Polling interval) --.      |          |  yyyy = measured offset,</span><br><span class="line">||                                \     |          |  zzzz = estimated error.</span><br><span class="line">||                                 |    |           \</span><br><span class="line">MS Name/IP address         Stratum Poll Reach LastRx Last sample</span><br><span class="line">===============================================================================</span><br><span class="line">^* 120.25.115.20                 2   6   337    64   -550us[ -759us] +/- 9876us</span><br></pre></td></tr></table></figure>
-
-<p><strong>查看 ntp 服务器状态</strong></p>
-<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">chronyc sourcestats -v</span><br></pre></td></tr></table></figure>
-
-<p>  示例输出</p>
-<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">210 Number of sources = 1</span><br><span class="line">                             .- Number of sample points in measurement set.</span><br><span class="line">                            /    .- Number of residual runs with same sign.</span><br><span class="line">                           |    /    .- Length of measurement set (time).</span><br><span class="line">                           |   |    /      .- Est. clock freq error (ppm).</span><br><span class="line">                           |   |   |      /           .- Est. error in freq.</span><br><span class="line">                           |   |   |     |           /         .- Est. offset.</span><br><span class="line">                           |   |   |     |          |          |   On the -.</span><br><span class="line">                           |   |   |     |          |          |   samples. \</span><br><span class="line">                           |   |   |     |          |          |             |</span><br><span class="line">Name/IP Address            NP  NR  Span  Frequency  Freq Skew  Offset  Std Dev</span><br><span class="line">==============================================================================</span><br><span class="line">120.25.115.20              11   9   525     -0.053      8.843  -6245ns  1074us</span><br></pre></td></tr></table></figure>
-
-<p><strong>查看 ntp 服务器是否在线</strong></p>
-<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">chronyc activity -v</span><br></pre></td></tr></table></figure>
-
-<p>  示例输出：</p>
-<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">[root@cloud-master01 kube-prometheus]# chronyc activity -v</span><br><span class="line">200 OK</span><br><span class="line">1 sources online</span><br><span class="line">0 sources offline</span><br><span class="line">0 sources doing burst (return to online)</span><br><span class="line">0 sources doing burst (return to offline)</span><br><span class="line">0 sources with unknown address</span><br></pre></td></tr></table></figure>
-
-<p><strong>查看 ntp 服务器详细信息</strong></p>
-<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">chronyc tracking -v</span><br></pre></td></tr></table></figure>
-
-<p>  示例输出：</p>
-<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">[root@cloud-master01 kube-prometheus]# chronyc tracking -v</span><br><span class="line">Reference ID    : 78197314 (120.25.115.20)</span><br><span class="line">Stratum         : 3</span><br><span class="line">Ref time (UTC)  : Fri Oct 06 14:40:05 2023</span><br><span class="line">System time     : 0.000293604 seconds fast of NTP time</span><br><span class="line">Last offset     : +0.000001403 seconds</span><br><span class="line">RMS offset      : 0.000997817 seconds</span><br><span class="line">Frequency       : 6.722 ppm fast</span><br><span class="line">Residual freq   : +0.016 ppm</span><br><span class="line">Skew            : 4.444 ppm</span><br><span class="line">Root delay      : 0.013335334 seconds</span><br><span class="line">Root dispersion : 0.001928344 seconds</span><br><span class="line">Update interval : 65.3 seconds</span><br><span class="line">Leap status     : Normal</span><br></pre></td></tr></table></figure>
-
-<p><strong>强制同步系统时钟</strong></p>
-<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">chronyc -a makestep</span><br></pre></td></tr></table></figure>
-
-      
-    </div>
-
-    
-    
-    
-
-    <footer class="post-footer">
-        <div class="post-eof"></div>
-      
-    </footer>
-  </article>
-</div>
-
-
-
-
+  <nav class="pagination">
+    <span class="page-number current">1</span><a class="page-number" href="/page/2/">2</a><a class="extend next" rel="next" title="下一页" aria-label="下一页" href="/page/2/"><i class="fa fa-angle-right"></i></a>
+  </nav>
 
 </div>
   </main>
