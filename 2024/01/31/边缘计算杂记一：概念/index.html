@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222"><meta name="generator" content="Hexo 7.1.1">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" integrity="sha256-yIDrPSXHZdOZhAqiBP7CKzIwMQmRCJ8UeB8Jo17YC4o=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"guoltan.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":false,"version":"8.19.1","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12},"copycode":{"enable":false,"style":null},"fold":{"enable":false,"height":500},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false}}</script><script src="/js/config.js"></script>
+
+    <meta name="description" content="什么是边缘计算？它具备什么价值？   边缘计算（Edge Computing）是一种分布式计算的架构，将计算和数据处理的能力推向离数据源和用户更近的边缘设备上。边缘设备可以是工控机、路由器、网关、传感器等，这些设备都有一定的计算、存储和网络连接能力。   边缘计算的价值在于：  减少数据传输延迟：边缘设备位于数据源和用户之间，可以避免长距离的数据传输，减少了数据传输延迟。  提供实时决策和响应：由">
+<meta property="og:type" content="article">
+<meta property="og:title" content="边缘计算杂记一：概念">
+<meta property="og:url" content="https://guoltan.github.io/2024/01/31/%E8%BE%B9%E7%BC%98%E8%AE%A1%E7%AE%97%E6%9D%82%E8%AE%B0%E4%B8%80%EF%BC%9A%E6%A6%82%E5%BF%B5/index.html">
+<meta property="og:site_name" content="guoltan个人博客">
+<meta property="og:description" content="什么是边缘计算？它具备什么价值？   边缘计算（Edge Computing）是一种分布式计算的架构，将计算和数据处理的能力推向离数据源和用户更近的边缘设备上。边缘设备可以是工控机、路由器、网关、传感器等，这些设备都有一定的计算、存储和网络连接能力。   边缘计算的价值在于：  减少数据传输延迟：边缘设备位于数据源和用户之间，可以避免长距离的数据传输，减少了数据传输延迟。  提供实时决策和响应：由">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2024-01-31T15:19:11.000Z">
+<meta property="article:modified_time" content="2024-01-31T15:20:04.449Z">
+<meta property="article:author" content="guoltan">
+<meta property="article:tag" content="K8S">
+<meta property="article:tag" content="边缘计算">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://guoltan.github.io/2024/01/31/%E8%BE%B9%E7%BC%98%E8%AE%A1%E7%AE%97%E6%9D%82%E8%AE%B0%E4%B8%80%EF%BC%9A%E6%A6%82%E5%BF%B5/">
+
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://guoltan.github.io/2024/01/31/%E8%BE%B9%E7%BC%98%E8%AE%A1%E7%AE%97%E6%9D%82%E8%AE%B0%E4%B8%80%EF%BC%9A%E6%A6%82%E5%BF%B5/","path":"2024/01/31/边缘计算杂记一：概念/","title":"边缘计算杂记一：概念"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>边缘计算杂记一：概念 | guoltan个人博客</title>
+  
+
+
+
+
+
+
+
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+<link rel="alternate" href="/atom.xml" title="guoltan个人博客" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">guoltan个人博客</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="搜索" role="button">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a></li><li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a></li><li class="menu-item menu-item-archives"><a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a></li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup"><div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off" maxlength="80"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close" role="button">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div class="search-result-container no-result">
+  <div class="search-result-icon">
+    <i class="fa fa-spinner fa-pulse fa-5x"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-overview-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">guoltan</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">12</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-tags">
+          <a href="/tags/">
+        <span class="site-state-item-count">6</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/guoltan" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;guoltan" rel="noopener me" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:897156356@qq.com" title="E-Mail → mailto:897156356@qq.com" rel="noopener me" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://guoltan.github.io/2024/01/31/%E8%BE%B9%E7%BC%98%E8%AE%A1%E7%AE%97%E6%9D%82%E8%AE%B0%E4%B8%80%EF%BC%9A%E6%A6%82%E5%BF%B5/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="guoltan">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="guoltan个人博客">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="边缘计算杂记一：概念 | guoltan个人博客">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          边缘计算杂记一：概念
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+
+      <time title="创建时间：2024-01-31 23:19:11" itemprop="dateCreated datePublished" datetime="2024-01-31T23:19:11+08:00">2024-01-31</time>
+    </span>
+
+  
+    <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv">
+      <span class="post-meta-item-icon">
+        <i class="far fa-eye"></i>
+      </span>
+      <span class="post-meta-item-text">阅读次数：</span>
+      <span id="busuanzi_value_page_pv"></span>
+    </span>
+    <span class="post-meta-item" title="本文字数">
+      <span class="post-meta-item-icon">
+        <i class="far fa-file-word"></i>
+      </span>
+      <span class="post-meta-item-text">本文字数：</span>
+      <span>4k</span>
+    </span>
+    <span class="post-meta-item" title="阅读时长">
+      <span class="post-meta-item-icon">
+        <i class="far fa-clock"></i>
+      </span>
+      <span class="post-meta-item-text">阅读时长 &asymp;</span>
+      <span>7 分钟</span>
+    </span>
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><p><strong>什么是边缘计算？它具备什么价值？</strong></p>
+<p>  边缘计算（Edge Computing）是一种分布式计算的架构，将计算和数据处理的能力推向离数据源和用户更近的边缘设备上。边缘设备可以是工控机、路由器、网关、传感器等，这些设备都有一定的计算、存储和网络连接能力。</p>
+<p>  边缘计算的价值在于：</p>
+<ul>
+<li><p>减少数据传输延迟：边缘设备位于数据源和用户之间，可以避免长距离的数据传输，减少了数据传输延迟。</p>
+</li>
+<li><p>提供实时决策和响应：由于边缘设备的计算和数据处理能力强大，可以实时对数据进行处理和分析，对数据进行过滤、聚合、计算等，快速做出决策和响应。</p>
+</li>
+<li><p>提高网络安全性：由于数据处理在边缘设备上进行，有助于减少对云端和网络的依赖性，从而提高系统的安全性和可靠性。</p>
+</li>
+<li><p>降低云计算成本：通过使用边缘计算，可以将计算和数据处理从云端下移，减少云计算的负载和成本。</p>
+</li>
+<li><p>支持物联网应用：边缘计算的应用场景非常适合物联网领域，因为物联网涉及到大量的传感器和设备，需要对这些设备产生的数据进行实时监控和分析，并做出实时决策和调整。</p>
+<p>边缘计算的典型应用包括自动驾驶、智能家居、智能制造、智慧城市等领域，在这些应用场景中，边缘计算可以快速响应用户需求，处理实时数据并进行决策。这种分布式计算架构的优势在于提高了系统的性能和效率，并能够更好地满足复杂的实时业务需求。</p>
+</li>
+</ul>
+<p><strong>边缘计算的架构大概是怎么样的？</strong></p>
+<p>  边缘计算的架构通常包括以下几个主要组件：</p>
+<ol>
+<li><p>边缘设备（Edge Devices）：边缘设备是指部署在离数据源和用户更近的位置上的设备，例如传感器、工控机、路由器、智能手机等。这些设备具备一定的计算、存储和网络连接能力，能够处理和分析数据，并执行一些简单的计算任务。</p>
+</li>
+<li><p>边缘节点（Edge Nodes）：边缘节点是一组连接在一起的边缘设备，它们协同工作，共同处理和管理数据。边缘节点可以是一个集群、网关或者边缘服务器等。边缘节点负责接收、存储、处理和转发来自边缘设备的数据，并与云端或中心节点进行通信。</p>
+</li>
+<li><p>云端或中心节点（Cloud or Central Nodes）：云端或中心节点是位于数据中心或云平台的中央服务器，负责接收、存储和管理从边缘节点传输过来的数据。云端或中心节点具备强大的计算和存储能力，可以执行复杂的数据分析和处理任务。</p>
+</li>
+<li><p>网络连接（Network Connectivity）：边缘计算依赖于可靠的网络连接，用于连接边缘设备、边缘节点和云端或中心节点之间的数据传输。可以利用有线网络（如以太网）或者无线网络（如Wi-Fi、蜂窝网络等）来实现连接。</p>
+</li>
+<li><p>边缘计算软件平台（Edge Computing Software Platform）：边缘计算软件平台提供了管理和协调边缘设备、边缘节点和云端节点之间通信和数据处理的功能。它包括边缘节点操作系统、容器化技术、边缘计算框架等组件，帮助实现数据的分发、处理、存储和安全管理。</p>
+</li>
+</ol>
+<p>在边缘计算架构中，边缘设备收集和生成数据，通过边缘节点进行本地处理和决策，然后将关键数据传输到云端或中心节点进行进一步的分析和计算。这种分布式计算架构能够提高系统的性能和效率，减少数据传输延迟，并支持实时的决策和响应。</p>
+<p><strong>边缘计算和 Kubernetes 存在什么关联？</strong></p>
+<ol>
+<li><p>边缘计算是一种分布式计算模型，它将计算、存储和网络功能推近到数据产生源头和最终用户之间，以提供更低延迟、更高带宽和更好的用户体验。边缘计算可以将计算资源放置在离用户或设备更近的位置，例如工厂、物流中心、智能城市等地方。</p>
+</li>
+<li><p>Kubernetes（简称K8s）是一个用于自动化容器化应用程序部署、扩展和管理的开源平台。它提供了管理容器化应用程序所需的资源调度、服务发现、负载均衡、弹性伸缩等功能。Kubernetes通过使用容器技术，如Docker，可以简化应用程序的部署和管理，并提供高可用性和弹性的运行环境。</p>
+</li>
+<li><p>边缘计算和Kubernetes结合在一起，可以实现在边缘设备上部署和管理容器化应用程序的能力。通过在边缘节点上运行Kubernetes集群，可以将容器化的应用程序部署到边缘设备中，实现边缘计算的灵活性和可扩展性。</p>
+</li>
+<li><p>在边缘计算环境中，通过Kubernetes可以实现容器化应用程序的自动部署、资源调度和服务发现。Kubernetes可以根据边缘设备的资源状况进行自动伸缩，确保应用程序在边缘节点上的高可用性和性能。</p>
+</li>
+</ol>
+<p><strong>边缘计算和 CDN 的关系？</strong></p>
+<p>  个人理解边缘计算和 CDN 都属于解决方案，它们之间非常相似。下面是我找到的一个 CDN 与边缘计算联合使用的案例：</p>
+<p>  假设有一家电子商务公司，他们的在线平台需要快速响应用户的请求并提供高质量的服务。用户遍布全球各地，访问平台的内容包括网页、图片、视频等。这家电子商务公司决定采用CDN来优化内容传输和加速用户访问体验。他们与CDN服务提供商合作，在全球范围内建立了许多节点服务器，这些节点服务器位于离用户最近的位置。</p>
+<p>  当用户请求访问该电子商务平台时，CDN会根据用户的位置选择距离最近的节点服务器来提供所需内容。CDN节点服务器具有缓存功能，如果所请求的内容已经存在于某个节点服务器上，CDN可以直接从该节点服务器中返回内容，而无需通过远程的主要服务器。这样可以大大减少数据传输的延迟，加快内容的加载速度。</p>
+<p>  此外，这些CDN节点服务器也可以提供边缘计算的能力。例如，当用户请求访问一个动态生成的页面时，CDN节点服务器可以在接收到请求后执行一些简单的计算任务，如数据处理、模板渲染等，以生成所需的页面，并将结果返回给用户。这样，不仅减少了从主要服务器到用户的数据传输量，还可以提供更快速的响应时间。</p>
+<p>  CDN作为边缘计算节点发挥了双重作用。它们不仅通过缓存和分发内容来加速内容传输，提高用户访问体验，而且通过执行一些简单的边缘计算任务，减少了数据传输延迟，并提供更快速的响应。</p>
+<p>边缘计算平台，大概需要解决哪些问题？</p>
+<p>  如果应用需要在边缘计算的场景下使用，对提供边缘计算能力的平台需要解决下面这几个问题：</p>
+<ul>
+<li><p>云边通信，边端通常没有固定IP，云端怎么去管控它们？云端又怎么去访问边端上的服务？</p>
+</li>
+<li><p>边缘自治，边端和云端连通性出现异常时，边端怎么保障还能正常的对外提供服务？</p>
+</li>
+<li><p>边缘部署，边缘节点间可能存在差异（如ARM、x86 或者服务配置有一些不同），怎么快速把应用发布在边缘节点。</p>
+</li>
+</ul>
+<p>那这里可以通过什么技术或者手段去实现这些能力？</p>
+<p><strong>云边通信</strong></p>
+<p>  云边通信需要解决的问题是边端没有固定IP，这使得传统的 ssh 主动去连接边缘的机器是无法做到的。边端虽然没办法被云端主动去连接，但可以反过来，让边端主动去连接云端，这时候就可以实现云边通信了。</p>
+<p>  所以这里可以设计一个程序，实现这个反向隧道。来解决掉云端和边端之间的通信问题。如 superedge 就是通过 tunnel-cloud、tunnel-edge 组件来实现的反向隧道。让云端可以实现边端管理。</p>
+<p><strong>边缘自治</strong></p>
+<p>  边缘自治边缘自治，笔者的理解是边缘节点能够自主的去进行决策和协作。实际上这里的实现需要和边缘上的应用实现相关联。我这里只讨论边缘计算的平台（基于 Kubernetes）要怎么实现基础的边缘自治能力。</p>
+<p>  如果只考虑到 Kubernetes 这一层次，假设云端和边端节点之间的网络不稳定，出现了几分钟断连的情况，这时候基于 Kubernetes 自身的机制，节点需要每隔一段时间进行上报的动作。当上报失败次数到某个次数，Kubernetes 会认为节点不健康，将状态设置为 NotReady，并驱逐节点上的所有服务。在其他节点上拉起新的工作副本。</p>
+<p>  对于边缘计算的场景下，这个设计其实是不可靠的，毕竟边端节点可能没有异常，它只是和云端存在网络通信问题。边端节点自身还是能够给边缘设备提供访问能力的。所以这时候边端节点不能只依赖 Kubernetes 原生的健康检查机制。还需要依赖一些分布式的检查方式。比如某个站点下的边缘节点异常了。那该站点下的其他节点可以和它进行连通性测试。确保该节点只是和云端通信存在异常。本身能力还是可以继续对外提供的。不进行驱逐。</p>
+<p>  另外当云端无法访问了，边端节点如果依赖云端的一些个性化数据无法获取到，也可能会造成业务影响，所以边端节点自身也需要去实现一层类似缓存、同步的机制。比如在本地拉起一个简易的数据库程序。将平常访问到云端的一些数据、在脱离云端通信过程中执行的一些决策数据等缓存到本地数据库中。等恢复后再执行同步。</p>
+<p><strong>边缘部署</strong></p>
+<p>  基于实际环境应用去考虑，边缘部署可能要解决这几个点：</p>
+<ul>
+<li><p>环境可能存在站点的概念，比如环境下存在非常多的节点。某些边缘节点属于一个站点，某些节点属于另一个站点，我一个边缘应用在同时发布在若干个站点。怎么快速去部署？</p>
+</li>
+<li><p>部署过程中可能存在差异化的配置，比如边缘节点的 CPU 架构可能是不一致的，比如同时存在 x86 和 arm 架构，那这个时候部署的时候怎么去快速渲染差异化的配置。</p>
+<p>那这里就是说要解决站点间部署的差异性，以及快速将应用部署在若干站点。这里就需要 Kubernetes 这一层再去设计一些额外的 CR 资源来实现，以 superedge 为例子。它设计了 NodeUnit、NodeGroup、ServiceGroup 的概念。</p>
+<p>我们可以将具备相同属性（例子中就是同一站点）的节点配置划分到 NodeUnit。这样不同站点间它们就归属在不同的 NodeUnit，所有的 NodeUnit 都归属于一个 NodeGroup。然后基于 NodeGroup 可以创建对应的 deploymentGrid。在 deploymentGrid 中可以配置 poolTemplate，将每个不同 NodeUnit 的差异化配置进行设置。实现差异化部署。之后再基于 NodeGroup 可以创建 ServiceGroup。去自动给这些 NodeUnit 部署的应用创建 service。来实现对外服务。</p>
+</li>
+</ul>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/K8S/" rel="tag"># K8S</a>
+              <a href="/tags/%E8%BE%B9%E7%BC%98%E8%AE%A1%E7%AE%97/" rel="tag"># 边缘计算</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/2024/01/26/go%E5%BC%80%E5%8F%91%E7%8E%AF%E5%A2%83%E7%8E%AF%E5%A2%83/" rel="prev" title="kubernetes go开发环境安装">
+                  <i class="fa fa-angle-left"></i> kubernetes go开发环境安装
+                </a>
+            </div>
+            <div class="post-nav-item">
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 
+    <span itemprop="copyrightYear">2024</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">guoltan</span>
+  </div>
+<div class="busuanzi-count">
+    <span class="post-meta-item" id="busuanzi_container_site_uv">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="back-to-top" role="button" aria-label="返回顶部">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js" integrity="sha256-XL2inqUJaslATFnHdJOi9GfQ60on8Wx1C2H8DYiN1xY=" crossorigin="anonymous"></script>
+<script src="/js/comments.js"></script><script src="/js/utils.js"></script><script src="/js/motion.js"></script><script src="/js/next-boot.js"></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/hexo-generator-searchdb/1.4.1/search.js" integrity="sha256-1kfA5uHPf65M5cphT2dvymhkuyHPQp5A53EGZOnOLmc=" crossorigin="anonymous"></script>
+<script src="/js/third-party/search/local-search.js"></script>
+
+
+
+
+
+
+
+  
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+
+
+
+
+</body>
+</html>
