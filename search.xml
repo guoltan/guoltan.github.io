@@ -514,4 +514,195 @@
         <tag>边缘计算</tag>
       </tags>
   </entry>
+  <entry>
+    <title>某环境接口调用偶现 502 问题分析</title>
+    <url>/2024/02/15/%E6%9F%90%E7%8E%AF%E5%A2%83%E6%8E%A5%E5%8F%A3%E8%B0%83%E7%94%A8%E5%81%B6%E7%8E%B0%20502%20%E9%97%AE%E9%A2%98%E5%88%86%E6%9E%90/</url>
+    <content><![CDATA[<h1 id="1-概述"><a href="#1-概述" class="headerlink" title="1. 概述"></a><strong>1. 概述</strong></h1><p>  本文的内容主要是对 TI361演示环境偶发 502 该问题的处理进行一次记录。其中章节 2 - 章节 3 主要讲述了问题现象、整个问题的排查过程、以及最后的解决方法。章节 4 主要是记录本次排查问题中对于某些问题的思考。<strong>章节 5</strong> 主要是对 2 ~ 3 章节的排查过程进行一次思路整理。如果需要定位类似问题，可以直接参考<strong>章节 5</strong> 的内容操作。</p>
+<h1 id="2-问题现象"><a href="#2-问题现象" class="headerlink" title="2. 问题现象"></a><strong>2. 问题现象</strong></h1><p>  用户反馈 361 演示环境存在异常，在使用的过程中偶发出现 Bad Gateway 的提示，接口返回 502。并且出现异常的接口不限。具体现象如下图：</p>
+<h1 id="3-排查过程"><a href="#3-排查过程" class="headerlink" title="3. 排查过程"></a><strong>3. 排查过程</strong></h1><h2 id="3-1-确认故障点"><a href="#3-1-确认故障点" class="headerlink" title="3.1. 确认故障点"></a><strong>3.1. 确认故障点</strong></h2><p>  出现该问题后，根据研发同学最初提供了思路，建议先去排查下 ti-gateway 的日志看看是否存在错误，以及集群机器负载是否正常。</p>
+<h3 id="3-1-1-确认集群负载情况以及-Pod-状态"><a href="#3-1-1-确认集群负载情况以及-Pod-状态" class="headerlink" title="3.1.1. 确认集群负载情况以及 Pod 状态"></a><strong>3.1.1. 确认集群负载情况以及 Pod 状态</strong></h3><p>  首先确认机器负载，通过 grafana 查看各个 Node 的机器负载，目前 CPU&#x2F;内存的使用率没有特别高的，属于正常。该问题可能不是机器负载导致的。</p>
+<h3 id="3-1-2-确认-ti-gateway-workload-状态"><a href="#3-1-2-确认-ti-gateway-workload-状态" class="headerlink" title="3.1.2. 确认  ti-gateway-workload 状态"></a><strong>3.1.2. 确认  ti-gateway-workload 状态</strong></h3><p>  查看 gateway 的状态，需要考虑的点：</p>
+<p>· gateway的状态是否正常，是否有出现过重启的问题（OOM或者程序异常退出）</p>
+<p>· 是否有异常的服务日志</p>
+<p>· 如何确认流量是否达到了 ti-gateway</p>
+<h4 id="3-1-2-1-确认-gateway-pod-状态"><a href="#3-1-2-1-确认-gateway-pod-状态" class="headerlink" title="3.1.2.1. 确认 gateway pod 状态"></a><strong>3.1.2.1. 确认 gateway pod 状态</strong></h4><p>  查看 gateway 的状态， Pod 未发生过重启，此时可以说明该问题不会是 gateway 程序异常退出或者 OOM 引发的。 </p>
+<h4 id="3-1-2-2-确认-gateway-的错误日志"><a href="#3-1-2-2-确认-gateway-的错误日志" class="headerlink" title="3.1.2.2. 确认 gateway 的错误日志"></a><strong>3.1.2.2. 确认 gateway 的错误日志</strong></h4><p>  进入 ti-gateway-workload 服务，查看 &#x2F;usr&#x2F;local&#x2F;apisix&#x2F;logs 目录下的 error.log，没发现相关调用接口的异常日志。</p>
+<h4 id="3-1-2-3-排查请求是否有达到-gateway"><a href="#3-1-2-3-排查请求是否有达到-gateway" class="headerlink" title="3.1.2.3. 排查请求是否有达到 gateway"></a><strong>3.1.2.3. 排查请求是否有达到 gateway</strong></h4><p>  从 gateway 的状态和服务日志来看，请求可能没有达到 gateway。需要一些方法去界定流量是否有抵达过 gateway。参考研发同学的 iwiki <a href="/pages/viewpage.action?pageId=596973203"><u><span class="16">Ti网关服务排查手册</span></u></a> 提供的思路进行排查。里面提到一个标准的错误场景，调用接口 5xx 的思路。如下图</p>
+<p>  通过该说法，可以推断，如果流量经过网关，那网关响应会重写一个响应头部 <strong>X-TiGateway-Upstream-Status</strong> 通过该头部我们可以去判断流量有没有经过 ti-gateway。如果未产生该头部，则代表流量没达到 gateway 则可能流量没有达到 gateway。当前的响应头部没有  <strong>X-TiGateway-Upstream-Status</strong> 此时可以推断流量没有抵达 gateway，需要向上排查。</p>
+<h3 id="3-1-3-确认-alb-状态"><a href="#3-1-3-确认-alb-状态" class="headerlink" title="3.1.3. 确认 alb 状态"></a><strong>3.1.3. 确认 alb 状态</strong></h3><p>  gateway 的上一层应该是 ingress-controller，环境使用的是灵雀 TKE 作为底座，此时需要对 alb 进行排查。</p>
+<p>  查看 alb 的状态，需要考虑的点和 gateway 类似：</p>
+<p>· gateway的状态是否正常，是否有出现过重启的问题（OOM或者程序异常退出）</p>
+<p>· 是否有异常的服务日志，请求日志可以通过 &#x2F;var&#x2F;log&#x2F;nginx&#x2F;error.log（错误日志） 以及 &#x2F;usr&#x2F;local&#x2F;openresty&#x2F;nginx&#x2F;logs&#x2F;access.log（访问日志）</p>
+<p>· 如何确认流量是否达到了 alb2</p>
+<h4 id="3-1-3-1-确认-alb-pod-状态"><a href="#3-1-3-1-确认-alb-pod-状态" class="headerlink" title="3.1.3.1. 确认 alb pod 状态"></a><strong>3.1.3.1. 确认 alb pod 状态</strong></h4><p>  查看 alb 状态，发现 global-alb2 虽然状态都是 Running 的，但是 192.168.25.19 以及 192.168.25.5 节点上的 global-alb2 分别出现过重启。</p>
+<p>  从容器的状态来看 192.168.25.19 的 alb 是出现过 Exit Code 137（OOM）的，但触发的事件节点是 2022.7.17 的 19:38。而我们当前出现故障的时间节点是 2022.7.18 的下午。初步可以推断不是由于该原因引起的。</p>
+<p>  192.168.25.5 的容器也出现过退出，但同样的，时间节点对不上。</p>
+<p>通过上述的分析，引发该问题的原因应该不是 alb 程序退出或者 OOM 等原因</p>
+<h4 id="3-1-3-2-确认-alb-的错误日志"><a href="#3-1-3-2-确认-alb-的错误日志" class="headerlink" title="3.1.3.2. 确认 alb 的错误日志"></a><strong>3.1.3.2. 确认 alb 的错误日志</strong></h4><p>  此时需要查询该时间节点下，alb 是否有产生过相关日志，进入 global 分别执行过过滤指令，得到的结果如下。（注：当时排查时未截图，其中 10:18:32 是当时请求失败的时间节点。+8 的话就是 CST 时间的 18:18）</p>
+<p>&#x2F;var&#x2F;log&#x2F;nginx # grep “10:18:” * | grep 07&#x2F;18</p>
+<p>error.log:2022&#x2F;07&#x2F;18 10:18:01 [warn] 53#53: *142405699 a client request body is buffered to a temporary file &#x2F;usr&#x2F;local&#x2F;openresty&#x2F;nginx&#x2F;client_body_temp&#x2F;0001647558, client: 159.75.199.13, server: _, request: “POST &#x2F;v4&#x2F;callback&#x2F;audits HTTP&#x2F;1.1”, host: “demo-v36.tiplatform.qq.com”</p>
+<p>error.log:2022&#x2F;07&#x2F;18 10:18:21 [warn] 53#53: *142407716 a client request body is buffered to a temporary file &#x2F;usr&#x2F;local&#x2F;openresty&#x2F;nginx&#x2F;client_body_temp&#x2F;0001647559, client: 159.75.198.73, server: _, request: “POST &#x2F;v4&#x2F;callback&#x2F;audits HTTP&#x2F;1.1”, host: “demo-v36.tiplatform.qq.com”</p>
+<p>error.log:2022&#x2F;07&#x2F;18 10:18:42 [warn] 53#53: *142408115 a client request body is buffered to a temporary file &#x2F;usr&#x2F;local&#x2F;openresty&#x2F;nginx&#x2F;client_body_temp&#x2F;0001647560, client: 159.75.199.142, server: _, request: “POST &#x2F;v4&#x2F;callback&#x2F;audits HTTP&#x2F;1.1”, host: “demo-v36.tiplatform.qq.com”</p>
+<p>error.log:2022&#x2F;07&#x2F;18 10:18:54 [warn] 53#53: *142408413 a client request body is buffered to a temporary file &#x2F;usr&#x2F;local&#x2F;openresty&#x2F;nginx&#x2F;client_body_temp&#x2F;0001647561, client: 159.75.198.73, server: _, request: “POST &#x2F;v4&#x2F;callback&#x2F;audits HTTP&#x2F;1.1”, host: “demo-v36.tiplatform.qq.com”</p>
+<p>&#x2F;var&#x2F;log&#x2F;nginx #</p>
+<p>  通过查询，没有在 2022&#x2F;07&#x2F;18 10:18:32 这个时间看到明显的报错，相关时间给出的都是一些告警信息。同样的命令在其他节点也查询过，得不到关键的信息。</p>
+<h4 id="3-1-3-3-分析请求是否有达到-alb"><a href="#3-1-3-3-分析请求是否有达到-alb" class="headerlink" title="3.1.3.3. 分析请求是否有达到 alb"></a><strong>3.1.3.3. 分析请求是否有达到 alb</strong></h4><p>  将所有节点的 access.log 导出进行过滤，在 2022&#x2F;07&#x2F;18 10:18:32 这个时间没有看到请求。推测这个请求并没有达到平台。</p>
+<p>[root@VM-25-41-tlinux ~&#x2F;log&#x2F;alb_log]# grep DescribeGroupDevices * | grep 10:18</p>
+<p>192.168.25.19_access.log:192.168.25.41 - - [18&#x2F;Jul&#x2F;2022:10:18:57 +0000] “POST &#x2F;gateway?action&#x3D;DescribeGroupDevices HTTP&#x2F;1.1” 200 678 “<a href="https://demo-v36.tiplatform.qq.com/tim/device">https://demo-v36.tiplatform.qq.com/tim/device</a>“ “Mozilla&#x2F;5.0 (Windows NT 10.0; Win64; x64) AppleWebKit&#x2F;537.36 (KHTML, like Gecko) Chrome&#x2F;103.0.0.0 Safari&#x2F;537.36”</p>
+<p>192.168.25.41_access.log:159.75.198.50 - - [18&#x2F;Jul&#x2F;2022:10:18:05 +0000] “POST &#x2F;gateway?action&#x3D;DescribeGroupDevices HTTP&#x2F;1.1” 200 654 “<a href="https://demo-v36.tiplatform.qq.com/tim/Application/deviceControl">https://demo-v36.tiplatform.qq.com/tim/Application/deviceControl</a>“ “Mozilla&#x2F;5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit&#x2F;537.36 (KHTML, like Gecko) Chrome&#x2F;103.0.0.0 Safari&#x2F;537.36”</p>
+<p>192.168.25.5_access.log:192.168.25.41 - - [18&#x2F;Jul&#x2F;2022:10:18:07 +0000] “POST &#x2F;gateway?action&#x3D;DescribeGroupDevices HTTP&#x2F;1.1” 200 678 “<a href="https://demo-v36.tiplatform.qq.com/tim/device">https://demo-v36.tiplatform.qq.com/tim/device</a>“ “Mozilla&#x2F;5.0 (Windows NT 10.0; Win64; x64) AppleWebKit&#x2F;537.36 (KHTML, like Gecko) Chrome&#x2F;103.0.0.0 Safari&#x2F;537.36”</p>
+<h3 id="3-1-4-分析问题是否由-WAF-引发"><a href="#3-1-4-分析问题是否由-WAF-引发" class="headerlink" title="3.1.4. 分析问题是否由 WAF 引发"></a><strong>3.1.4. 分析问题是否由 WAF 引发</strong></h3><p>  经过上述的排查，怀疑请求没有达到平台，而是在 WAF 侧直接返回的失败。通过联系腾讯云助手（cloud IT support）咨询。将情况描述以后，得到的确认是该请求有到 WAF，并且 WAF 也提交给了后端，但是后端得到的返回是 502。也就是说该问题<strong>还有节点被遗漏</strong>了，需要继续排查。</p>
+<h2 id="3-2-重新梳理流量路径"><a href="#3-2-重新梳理流量路径" class="headerlink" title="3.2. 重新梳理流量路径"></a><strong>3.2. 重新梳理流量路径</strong></h2><p>  基于上述的排查进展，梳理出的情况是有部分流量节点没有去定位，通过（学习）查看 WAF 关联的节点配置，找到了其关联的源站 IP。通过该 IP 成功找到了关联的后端。发现它实际上是关联的 HA VIP。也就是说实际上环境还存在一个 keepalived 的组件在提供 VIP 功能。还需要排查此节点。</p>
+<p>  基于上述排查过程，简单总结出的流量链路如下</p>
+<p>浏览器 -&gt; DNS -&gt; WAF -&gt; EIP -&gt; HA VIP(Keepalived) -&gt; alb -&gt; ti-gateway -&gt; 业务pod</p>
+<p>  每个节点角色功能如下</p>
+<p>· 浏览器 – 请求发起者</p>
+<p>· DNS – 提供站点域名解析，将请求引入 WAF</p>
+<p>· WAF – 提供 WEB 应用防火墙功能，负责拦截 Web 攻击，过滤流量后将请求转发给后端服务</p>
+<p>· EIP 公网 IP – 提供公网访问功能</p>
+<p>· HA VIP – 虚拟 IP，提供网络层高可用功能结合 TKE 自建 VIP 的 keepalived 使用。实现平台网络层高可用。</p>
+<p>· alb – 灵雀自研的 ingress-controller，基于 URL 将请求分发到对应的后端业务 Pod。</p>
+<p>· ti-gateway – TI平台自研的网关组件，负责将 TI 业务接口的调用分发到指定的业务 Pod。</p>
+<p>· 业务 Pod – 提供业务处理逻辑的进程。</p>
+<h2 id="3-3-分析-keepalived-异常"><a href="#3-3-分析-keepalived-异常" class="headerlink" title="3.3. 分析 keepalived 异常"></a><strong>3.3. 分析 keepalived 异常</strong></h2><h3 id="3-3-1-排查-keepalived-日志"><a href="#3-3-1-排查-keepalived-日志" class="headerlink" title="3.3.1. 排查 keepalived 日志"></a><strong>3.3.1. 排查 keepalived 日志</strong></h3><p>  重新梳理流量路径后，需要对 keepalived 进行排查，通过 kubectl logs -n kube-system keepalived-x.x.x.x &gt; keepalived-x.x.x.x.log 获取日志，发现了两个比较醒目的错误，内容如下：</p>
+<h1 id="频繁出现的日志，表示网络环境中有重复的-VRID"><a href="#频繁出现的日志，表示网络环境中有重复的-VRID" class="headerlink" title="频繁出现的日志，表示网络环境中有重复的 VRID"></a>频繁出现的日志，表示网络环境中有重复的 VRID</h1><p>Mon Jul 18 10:41:52 2022: (VI_1) ip address associated with VRID 10 not present in MASTER advert : 192.168.25.13</p>
+<p>Mon Jul 18 10:41:52 2022: (VI_1) ip address associated with VRID 10 not present in MASTER advert : 192.168.25.13</p>
+<h1 id="这一段日志表示出现过切主的情况"><a href="#这一段日志表示出现过切主的情况" class="headerlink" title="这一段日志表示出现过切主的情况"></a>这一段日志表示出现过切主的情况</h1><p>Mon Jul 18 10:41:52 2022: (VI_1) Entering MASTER STATE</p>
+<p>Mon Jul 18 10:41:52 2022: (VI_1) ip address associated with VRID 10 not present in MASTER advert : 192.168.25.13</p>
+<p>Mon Jul 18 10:41:52 2022: (VI_1) Received advert from 192.168.25.5 with lower priority 100, ours 100, forcing new election</p>
+<p>Mon Jul 18 10:41:52 2022: (VI_1) Master received advert from 192.168.25.41 with same priority 100 but higher IP address than ours</p>
+<p>Mon Jul 18 10:41:52 2022: (VI_1) Entering BACKUP STATE</p>
+<p>  由于日志中发生过切主，而切主的过程中业务是会出现闪断的。推测问题与 keepalived 切主有关系。接下来需要一些方法去验证。</p>
+<h3 id="3-3-2-验证问题是否和-keepalived-频繁切主有关"><a href="#3-3-2-验证问题是否和-keepalived-频繁切主有关" class="headerlink" title="3.3.2. 验证问题是否和 keepalived 频繁切主有关"></a><strong>3.3.2. 验证问题是否和 keepalived 频繁切主有关</strong></h3><h4 id="3-3-2-1-通过日志确认"><a href="#3-3-2-1-通过日志确认" class="headerlink" title="3.3.2.1. 通过日志确认"></a><strong>3.3.2.1. 通过日志确认</strong></h4><p>  以下图请求为例，于 GMT 时间的 Mon, 18 Jul 2022 15:12:07 进行的请求失败了。我在同一个时间段内，我通过这个时间节点去查询 gateway、alb 都无法查询到记录。也就是说请求在进入 alb 之前已经丢失了。</p>
+<p>  通过查询 keepalived 的日志，可以发现，这个时间段发生了重新选举，也就是切主。这说明切主的过程中可能会造成请求异常。</p>
+<h4 id="3-3-2-2-通过请求对比"><a href="#3-3-2-2-通过请求对比" class="headerlink" title="3.3.2.2. 通过请求对比"></a><strong>3.3.2.2. 通过请求对比</strong></h4><p>  通过比较访问 HAVIP 的情况下（就是直接访问 <a href="https://demo-v36.tiplatform.qq.com/"><u><span class="16">https://demo-v36.tiplatform.qq.com/</span></u></a> ）以及不访问 HAVIP（也就是直接访问对应节点的公网IP），发现同一时间段内，走 HA VIP 的请求是不通的。绕过 HA VIP 的请求是可以正常通的。</p>
+<p><strong>正常情况下的请求比较</strong></p>
+<p><strong>异常情况下的请求比较</strong></p>
+<p>异常情况下有出现强制选举日志</p>
+<p>  经此对比，基本上可以实锤问题就是 keepalived 切主引发的。</p>
+<h3 id="3-3-3-排查-Keepalived-切主原因"><a href="#3-3-3-排查-Keepalived-切主原因" class="headerlink" title="3.3.3. 排查 Keepalived 切主原因"></a><strong>3.3.3. 排查 Keepalived 切主原因</strong></h3><p>  为了排查切主原因，此时查看 Keepalived 的配置、日志，得出信息如下：</p>
+<p>· 自建 VIP 的 Keepalived 配置是使用了非抢占模式，每个 keepalived 配置相同优先级。在初步启动时协商 Keepalived Master，在成员相同优先级的情况下，IP 地址越大，优先级越高。</p>
+<p>· Keepalived 使用 &#x2F;etc&#x2F;kubernetes&#x2F;keepalived&#x2F;check.sh 作为 track 条件。目前该脚本的执行情况来看，除非执行时间过长（超出计时器配置），不然是不会返回 1 的。</p>
+<p>· 从日志中只能看到切主，并没有提到是因为 track 导致优先级下降导致切主。应该不是 track 的原因引发的。</p>
+<p>· 日志时刻在刷新 vrid 冲突问题。理论上 vrid 冲突确实会影响业务。</p>
+<p>  基于初步诊断的结果，目前怀疑导致切主的问题是因为 vrid 冲突，需要先解决该问题后持续观察业务是否恢复正常。</p>
+<h2 id="3-4-修复-vrid-冲突并验证功能"><a href="#3-4-修复-vrid-冲突并验证功能" class="headerlink" title="3.4. 修复 vrid 冲突并验证功能"></a><strong>3.4. 修复 vrid 冲突并验证功能</strong></h2><h3 id="3-4-1-找到-vrid-冲突源"><a href="#3-4-1-找到-vrid-冲突源" class="headerlink" title="3.4.1. 找到 vrid 冲突源"></a><strong>3.4.1. 找到 vrid 冲突源</strong></h3><p>  刚开始想通过 subnet 判断冲突源，通过查看环境清单，只有一套环境处于同一个 subnets。推测修改该环境 vrid 就可以解决问题。</p>
+<p>  此时通过在集群任意节点上，执行 tcpdump vrrp 指令，这时候发现冲突的 vrid 有很多套环境。。。。所以这个时候还是得修改演练环境的 vrid。</p>
+<h3 id="3-4-2-修改-keepalived-的-vrid"><a href="#3-4-2-修改-keepalived-的-vrid" class="headerlink" title="3.4.2. 修改 keepalived 的 vrid"></a><strong>3.4.2. 修改 keepalived 的 vrid</strong></h3><p>  在 global 3 台 master 分别修改配置文件 vim &#x2F;etc&#x2F;kubernetes&#x2F;keepalived&#x2F;keepalived.conf</p>
+<p>vrrp_instance VI_1 {</p>
+<p>    state BACKUP</p>
+<p>    interface eth0</p>
+<p>    virtual_router_id 250 #将此处的 virtual_router_id 从 10 替换成 250.</p>
+<p>    priority 100</p>
+<p>    advert_int 1</p>
+<p>    authentication {</p>
+<p>        auth_type PASS</p>
+<p>        auth_pass 1111</p>
+<p>    }</p>
+<p>    virtual_ipaddress {</p>
+<p>        192.168.25.13</p>
+<p>    }</p>
+<p>    track_script {</p>
+<p>        check</p>
+<p>    }</p>
+<p>}</p>
+<p>  重启 keepalived 服务</p>
+<h1 id="获取-docker-id"><a href="#获取-docker-id" class="headerlink" title="获取 docker id"></a>获取 docker id</h1><p>[root@vm-25-19-tlinux ~]# docker ps -a | grep keepalived</p>
+<p>417092ae5316   c3efc585784a                                                          “&#x2F;usr&#x2F;local&#x2F;sbin&#x2F;kee…”   4 months ago   Up 31 hours                           k8s_keepalived_keepalived-192.168.25.19_kube-system_c915363bfce6a644ac7c8e054aeae619_7</p>
+<p>4f22d8a93303   192.168.25.13:60080&#x2F;tkestack&#x2F;pause:3.2                                “&#x2F;pause”                 4 months ago   Up 4 months                           k8s_POD_keepalived-192.168.25.19_kube-system_c915363bfce6a644ac7c8e054aeae619_1</p>
+<h1 id="重启-keepalived-容器"><a href="#重启-keepalived-容器" class="headerlink" title="重启 keepalived 容器"></a>重启 keepalived 容器</h1><p>docker restart 417092ae5316</p>
+<p>  重启服务后，查看 keepalived 日志，未出现过异常日志。</p>
+<h1 id="4-排查过程中的一些思考"><a href="#4-排查过程中的一些思考" class="headerlink" title="4. 排查过程中的一些思考"></a><strong>4. 排查过程中的一些思考</strong></h1><h2 id="4-1-怎么快速抓-VRRP-包，查看-vrid-冲突源？"><a href="#4-1-怎么快速抓-VRRP-包，查看-vrid-冲突源？" class="headerlink" title="4.1. 怎么快速抓 VRRP 包，查看 vrid 冲突源？"></a><strong>4.1. 怎么快速抓 VRRP 包，查看 vrid 冲突源？</strong></h2><p>通过在集群任意节点上，执行 tcpdump vrrp 指令即可。如果出现多个IP使用了相同的 vrid，代表他们之间 vrid 是冲突的。类似输出如下图。</p>
+<p>如果希望统计有哪些环境出现了冲突，可以将捕获结果导入到 wireshark，通过 统计 -&gt; Ipv4 Staticitsc -&gt; All Adress 可以获取本次捕获所有包的 IP 地址列表。通过显示过滤器，使用过滤条件 vrrp.virt_rtr_id &#x3D;&#x3D; VRID 可以筛选出需要确认冲突的 IP。类似如下的输出。</p>
+<p>  基于 VRRP 的原理，只有 Master 节点会主动给成员发心跳报文。而一个 VRRP 实例代表一个 Keepalived，也就是一套环境。通过这个方法就可以得出有哪些环境存在冲突需要修复。</p>
+<h2 id="4-2-为什么-ifconfig-看不到-keepalived-这个设备？"><a href="#4-2-为什么-ifconfig-看不到-keepalived-这个设备？" class="headerlink" title="4.2. 为什么 ifconfig 看不到 keepalived 这个设备？"></a><strong>4.2. 为什么 ifconfig 看不到 keepalived 这个设备？</strong></h2><p>  在验证问题时想查看 keepalived 网口的信息，此时发现了一个现象，通过 ifconfig 是没有办法直接显示 keepalived 的。但是 ifconfig keepalived 可以输出结果。输出如下：</p>
+<h2 id="4-3-为什么在-VRID-冲突的情况下，环境依然可用？"><a href="#4-3-为什么在-VRID-冲突的情况下，环境依然可用？" class="headerlink" title="4.3. 为什么在 VRID 冲突的情况下，环境依然可用？"></a><strong>4.3. 为什么在 VRID 冲突的情况下，环境依然可用？</strong></h2><p>  keepalived 是怎么知道 vrid 冲突的，VRRP报文里面有携带 vrid 和 vip 字段，通过判断本地配置文件的 vrid 和 vip 和报文中是否出现 vrid 一样但 vip 不同的报文即可。</p>
+<p>  理论上 keepalived 的虚拟 MAC 地址是通过 vrid 去决定的，如果两组 vrrp 实例使用了相同的 vrid，那么结果就是他们协商通过以后会发送免费 ARP 报文，MAC 地址相同。此时对于物理网络来说应该会产生 MAC 地址漂移的问题。对外体现就是网络不稳定，通信时断时续。</p>
+<p>  目前原因还在确认，从自己抓包测试的结果初步推断和腾讯云实现虚拟网络的机制(vpc.ko) 有关，目前还在确认中。中间可能有一层网络封装屏蔽了 MAC 冲突的问题。最后呈现的结果就是虽然有 VRID 冲突，但是业务还是可用。</p>
+<h2 id="4-4-VRID-冲突会导致切主？"><a href="#4-4-VRID-冲突会导致切主？" class="headerlink" title="4.4. VRID 冲突会导致切主？"></a><strong>4.4. VRID 冲突会导致切主？</strong></h2><p>  当前通过配置修改验证，解决了 VRID 冲突问题以后，偶发切主现象确实消失了。具体原因还没有理出来。</p>
+<h2 id="4-5-请求回包的过程中，keepalived-切主是否会有影响？"><a href="#4-5-请求回包的过程中，keepalived-切主是否会有影响？" class="headerlink" title="4.5. 请求回包的过程中，keepalived 切主是否会有影响？"></a><strong>4.5. 请求回包的过程中，keepalived 切主是否会有影响？</strong></h2><p>  当前环境 keepalived 的 ipvs 工作模式是 nat 模式，进出流量都会经过 keepalived 配置的 ipvs。在进行转发作业的时候 lvs 会维护一张连接表。如果说中途出现 keepalaived 切主的情况。新的主 keepalived 对这些连接信息存在丢失。此时请求&#x2F;响应链路应该会中断一会。</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line"><span class="comment"># ipvs 配置</span></span><br><span class="line">virtual_server 192.168.25.90 60080 &#123;</span><br><span class="line">    delay_loop 10</span><br><span class="line">    lb_algo rr</span><br><span class="line">    lb_kind NAT  <span class="comment"># 使用了 NAT 模式</span></span><br><span class="line">    protocol TCP</span><br><span class="line">    real_server 192.168.25.127 60080 &#123;</span><br><span class="line">        weight 1</span><br><span class="line">        HTTP_GET &#123;</span><br><span class="line">            url &#123;</span><br><span class="line">                path /</span><br><span class="line">            &#125;</span><br><span class="line">            connect_timeout 10</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+
+<p>  实际上我在排查过程中，是遇到了两种场景，一种是请求没有到 gateway（如上文 2~3 的过程，另一种情况是请求已经到了 gateway 并且 gateway 也转给了业务 Pod，业务 Pod 也有正常返回。但最终结果也是 502。也就是说切主确实会对回程流量造成影响。</p>
+<h2 id="4-6-WAF-是怎么工作的？"><a href="#4-6-WAF-是怎么工作的？" class="headerlink" title="4.6. WAF 是怎么工作的？"></a><strong>4.6. WAF 是怎么工作的？</strong></h2><p>  具体可参考腾讯云官网的示例 <a href="https://cloud.tencent.com/document/product/627/39843">Web 应用防火墙 产品分类-产品简介-文档中心-腾讯云</a>，当前演示环境配置的是 SaaS 型的，总体逻辑如下</p>
+<p><img src="C:\Users\89715\AppData\Roaming\marktext\images\2023-08-26-19-36-48-1693049798627.jpg"></p>
+<h1 id="5-总结"><a href="#5-总结" class="headerlink" title="5. 总结"></a><strong>5. 总结</strong></h1><h2 id="5-1-思路"><a href="#5-1-思路" class="headerlink" title="5.1. 思路"></a><strong>5.1.</strong> <strong>思路</strong></h2><p>  后续如果遇到类似问题，可优先尝试以下思路去定位：</p>
+<ul>
+<li><p>可以先通过响应头部是否有携带 <strong>X-ABC-Upstream-Status</strong> 来定界下范围，如果有携带那应该是后端服务有异常，优先查看后端服务。如果没有携带可能是请求没抵达，也可能是中途因为其他原因连接丢失。</p>
+</li>
+<li><p>如果组件找不到请求的日志，或者有收到请求但是有正常响应，页面接口报 502，大概率是中间某个节点触发了主从切换。可以往带主从切换的组件优先进行排查。</p>
+</li>
+<li><p>梳理网络拓扑，确认入&#x2F;出流量的路径。再基于每个流量节点进行排查。类似场景可参考 5.2、5.3 的方法进行确认。</p>
+</li>
+</ul>
+<h2 id="5-2-演示环境网络路径"><a href="#5-2-演示环境网络路径" class="headerlink" title="5.2. 演示环境网络路径"></a><strong>5.2.</strong> <strong>演示环境网络路径</strong></h2><p>  <strong>拓扑</strong></p>
+<p>  <strong>每个节点角色功能如下</strong></p>
+<ul>
+<li><p>浏览器 – 请求发起者</p>
+</li>
+<li><p>DNS – 提供站点域名解析，将请求引入 WAF</p>
+</li>
+<li><p>WAF – 提供 WEB 应用防火墙功能，负责拦截 Web 攻击，过滤流量后将请求转发给后端服务</p>
+</li>
+<li><p>EIP 公网 IP – 提供公网访问功能</p>
+</li>
+<li><p>HA VIP – 虚拟 IP，提供网络层高可用功能结合 TKE 自建 VIP 的 keepalived 使用。实现平台网络层高可用。</p>
+</li>
+<li><p>alb –  ingress-controller，基于 URL 将请求分发到对应的后端业务 Pod。</p>
+</li>
+<li><p>内部 gateway – 自研的网关组件，负责将业务接口的调用分发到指定的业务 Pod。</p>
+</li>
+<li><p>业务 Pod – 提供业务处理逻辑的进程。</p>
+</li>
+</ul>
+<h2 id="5-3-各环节排查思路-处理方法"><a href="#5-3-各环节排查思路-处理方法" class="headerlink" title="5.3. 各环节排查思路&#x2F;处理方法"></a><strong>5.3.</strong> <strong>各环节排查思路&#x2F;处理方法</strong></h2><p>  每个环节的排查&#x2F;处理思路</p>
+<table>
+<thead>
+<tr>
+<th><strong>排查节点</strong></th>
+<th><strong>排查以及处理思路</strong></th>
+</tr>
+</thead>
+<tbody><tr>
+<td>客户端浏览器&#x2F;Postman 等程序</td>
+<td>1. 如果是接口偶现 502，可能是类似的问题，需要先确认下 Response Headers 有没有带 <strong>X-ABC-Upstream-Status</strong>。2. 也有可能是客户端自身问题，比如配置或者网络环境质量不好。如果有多个用户反馈类似的情况。这种场景应该是平台侧的问题。需要从平台侧找原因。</td>
+</tr>
+<tr>
+<td>DNS</td>
+<td>1. 通常情况下不会是它的原因。域名访问不通，平台是无法访问的。2. 如果出现了异常，可以确认近期是否有进行过配置变更 3. 联系腾讯云小助手支持</td>
+</tr>
+<tr>
+<td>WAF</td>
+<td>1. 同 DNS 的处理思路，如果需要访问日志等信息可联系腾讯云小助手支持。联系支持时需要提供接口调用的具体时间、请求的 URL。小助手可以提供对应的访问日志。</td>
+</tr>
+<tr>
+<td>EIP</td>
+<td>1. 同 DNS 的处理思路。通常情况下应该不是它的原因</td>
+</tr>
+<tr>
+<td>HA VIP</td>
+<td>1. 查看日志，相关接口报错的时间点内是否发生过切主。可通过 kubectl logs -n kube-system keepalived-x.x.x.x 获取日志。2. 日志中是否有产生重复 vrid 的提示，如果有则需要修复。此时可以通过 tcpdump vrrp 的方法快速确认冲突源。</td>
+</tr>
+<tr>
+<td>alb（ingress-controller）</td>
+<td>1. 确认 alb 状态是否正常，近期状态是否有异常退出、重启等情况2. 确认 alb 的请求日志和错误日志。进入 alb 容器访问请求日志路径</td>
+</tr>
+<tr>
+<td>内部 gateway</td>
+<td>1. 组件找不到请求的日志，应该是上面其他环节存在异常。2. 组件可以找到请求日志，从后端服务也能找到正常处理的日志，此时可能是上面有个环节存在异常。比如 keepalived 切主等。建议在上面其他环节进行排查。</td>
+</tr>
+<tr>
+<td>业务 Pod</td>
+<td>1. 确认业务 Pod 状态是否为 Running 并就绪。2. 确认业务 Pod 是否有产生过重启记录（重启计数器不为 0），重启的时间节点以及退出码。</td>
+</tr>
+<tr>
+<td>主机</td>
+<td>1. 通过 grafana 查看监控，集群各主机状态是否正常，负载是否正常。</td>
+</tr>
+</tbody></table>
+]]></content>
+      <tags>
+        <tag>排障</tag>
+      </tags>
+  </entry>
 </search>
