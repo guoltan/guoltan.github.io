@@ -148,13 +148,13 @@
   <nav class="site-state">
       <div class="site-state-item site-state-posts">
         <a href="/archives/">
-          <span class="site-state-item-count">13</span>
+          <span class="site-state-item-count">14</span>
           <span class="site-state-item-name">日志</span>
         </a>
       </div>
       <div class="site-state-item site-state-tags">
           <a href="/tags/">
-        <span class="site-state-item-count">7</span>
+        <span class="site-state-item-count">8</span>
         <span class="site-state-item-name">标签</span></a>
       </div>
   </nav>
@@ -1175,6 +1175,111 @@
   
 
   <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="">
+    <link itemprop="mainEntityOfPage" href="https://guoltan.github.io/2022/11/10/Redis%E5%93%8D%E5%BA%94%E6%85%A2%E5%AF%BC%E8%87%B4%E6%8E%A5%E5%8F%A3%E8%B6%85%E6%97%B6%E9%97%AE%E9%A2%98%E5%88%86%E6%9E%90/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="guoltan">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="guoltan个人博客">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="undefined | guoltan个人博客">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          <a href="/2022/11/10/Redis%E5%93%8D%E5%BA%94%E6%85%A2%E5%AF%BC%E8%87%B4%E6%8E%A5%E5%8F%A3%E8%B6%85%E6%97%B6%E9%97%AE%E9%A2%98%E5%88%86%E6%9E%90/" class="post-title-link" itemprop="url">Redis响应慢导致接口超时问题分析</a>
+        </h2>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+
+      <time title="创建时间：2022-11-10 17:11:25" itemprop="dateCreated datePublished" datetime="2022-11-10T17:11:25+08:00">2022-11-10</time>
+    </span>
+
+  
+    <span class="post-meta-item" title="本文字数">
+      <span class="post-meta-item-icon">
+        <i class="far fa-file-word"></i>
+      </span>
+      <span class="post-meta-item-text">本文字数：</span>
+      <span>1.3k</span>
+    </span>
+    <span class="post-meta-item" title="阅读时长">
+      <span class="post-meta-item-icon">
+        <i class="far fa-clock"></i>
+      </span>
+      <span class="post-meta-item-text">阅读时长 &asymp;</span>
+      <span>2 分钟</span>
+    </span>
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+          <h1 id="背景"><a href="#背景" class="headerlink" title="背景"></a><strong>背景</strong></h1><p>  业务分析视频时，发现人物标签丢失图片。经研发定位发现业务的 CreateDownloadURL 接口会出现超时的问题，而该接口主要是使用了 Redis 服务，怀疑是 Redis 服务存在故障导致业务异常。</p>
+<img src="/2022/11/10/Redis%E5%93%8D%E5%BA%94%E6%85%A2%E5%AF%BC%E8%87%B4%E6%8E%A5%E5%8F%A3%E8%B6%85%E6%97%B6%E9%97%AE%E9%A2%98%E5%88%86%E6%9E%90/1.jpg" class="" title="1.jpg">
+
+<h1 id="排查过程"><a href="#排查过程" class="headerlink" title="排查过程"></a>排查过程</h1><p>  通过查看平台 Redis 监控，发现 Redis 某个实例存在大量的慢查询记录（1K）。怀疑该 Redis 实例存在问题。</p>
+<img src="/2022/11/10/Redis%E5%93%8D%E5%BA%94%E6%85%A2%E5%AF%BC%E8%87%B4%E6%8E%A5%E5%8F%A3%E8%B6%85%E6%97%B6%E9%97%AE%E9%A2%98%E5%88%86%E6%9E%90/2.jpg" class="" title="2.jpg">
+
+<p>  登录到该 Redis 实例，通过 slowlog get 指令，获取当前的慢查询记录，通过查询发现基本所有的慢查询记录都是查询 某个 key 触发的。并且查询的方式是 keys 指令（复杂度较高，指令执行时间较长）。</p>
+<p>  通过 dbsize 查询，发现当前 Redis 集群的键数量已经达到 96W。在这个数量下执行 keys 类的指令（复杂度高），会拖慢 Redis 的处理效率（ Redis 单线程处理，其他指令会阻塞）。导致 Redis 性能下降，这样调用 Redis 的服务性能就会下降。出现异常。</p>
+<img src="/2022/11/10/Redis%E5%93%8D%E5%BA%94%E6%85%A2%E5%AF%BC%E8%87%B4%E6%8E%A5%E5%8F%A3%E8%B6%85%E6%97%B6%E9%97%AE%E9%A2%98%E5%88%86%E6%9E%90/3.jpg" class="" title="3.jpg">
+
+<p>  此时需要理清楚为什么集群中存在大量的 Key，以及某个 Key 存在大量查询的原因。</p>
+<p>  某个 key 产生大量查询的原因。经咨询是研发的代码逻辑缺陷，查询方式使用了 keys 并且查询间隔非常短（毫秒级的轮询）而环境存在大量的 key，使用这种方式就会一直产生慢查询记录，影响 Redis 性能。该问题需要研发修复。</p>
+<p>  存在大量 Key 的原因，需要先查询有哪些 key，研发侧怀疑是某个服务存量的 key 数量会比较多。因为当前该 key 为了满足下载有效期的时间，配置了 30 天的有效期。而近期环境一直在执行压测作业。集群可能会积压该服务的 key。</p>
+<p>  通过查询，该服务的 key 的数量达到了 95W。也就是集群中基本上所有 key 都是由该服务产生的。这也符合了我们的推测，由于近期压测次数较多产生了大量的 key，key 的 TTL 过长导致集群积压大量 key，redis 性能下降导致服务超时。对于这个服务的处理，当前的策略是先调整 TTL 为 1 天，避免集群产生太多 Key。</p>
+<img src="/2022/11/10/Redis%E5%93%8D%E5%BA%94%E6%85%A2%E5%AF%BC%E8%87%B4%E6%8E%A5%E5%8F%A3%E8%B6%85%E6%97%B6%E9%97%AE%E9%A2%98%E5%88%86%E6%9E%90/4.jpg" class="" title="4.jpg">
+
+<p>  当前需要核实 key 数量对 Redis 实例性能的影响，需要先删除掉该服务相关的 key。执行如下命令清理：</p>
+<p>清理掉所有 abc:token: 开头的 key</p>
+<p>redis-cli -a 密码 keys “abc:token:*” | xargs redis-cli -a 密码 del</p>
+<p>  清理完成以后，经研发反馈，性能恢复正常，接口响应变得非常快。</p>
+<h1 id="思考"><a href="#思考" class="headerlink" title="思考"></a>思考</h1><h2 id="同等配置下，如果用-Keys-方式查询，集群-Key-达到多少会开始产生慢查询记录？"><a href="#同等配置下，如果用-Keys-方式查询，集群-Key-达到多少会开始产生慢查询记录？" class="headerlink" title="同等配置下，如果用 Keys 方式查询，集群 Key 达到多少会开始产生慢查询记录？"></a>同等配置下，如果用 Keys 方式查询，集群 Key 达到多少会开始产生慢查询记录？</h2><p>  通过 redis-benchmark 写入 key，大约 8W 左右就会开始产生慢查询记录，能说明 keys 这种方式非常不适用于生产环境。应该要严格限制业务侧去使用 keys 等方式去查询 redis 上面的数据。</p>
+<h2 id="Redis-后续可改进点？"><a href="#Redis-后续可改进点？" class="headerlink" title="Redis 后续可改进点？"></a>Redis 后续可改进点？</h2><p>  需要把监控报警能力覆盖进去，通过告警通知就可以快速获知这个现象，减少一些人工判断的动作。</p>
+<p>  需要在 CI 的代码检测阶段引入相关的 keys 检测，及时提醒用户修正使用方法。</p>
+
+      
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+        <div class="post-eof"></div>
+      
+    </footer>
+  </article>
+</div>
+
+
+
+
+    
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="">
     <link itemprop="mainEntityOfPage" href="https://guoltan.github.io/2022/09/10/%E5%A6%82%E4%BD%95%E6%9F%A5%E7%9C%8B%E6%9F%90%E8%BF%9B%E7%A8%8B%E5%BB%BA%E7%AB%8B%E7%9A%84%E8%BF%9E%E6%8E%A5%E4%BF%A1%E6%81%AF/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
@@ -1294,106 +1399,6 @@
 </tr>
 </tbody></table>
 <p> 基于上述的汇总，可以看出这些指令直接是可以取合集做一个工具实现更好的信息捕获的。后续可以实现一个自动化的工具，加入到 orca-tools 里面。</p>
-
-      
-    </div>
-
-    
-    
-    
-
-    <footer class="post-footer">
-        <div class="post-eof"></div>
-      
-    </footer>
-  </article>
-</div>
-
-
-
-
-    
-
-
-<div class="post-block">
-  
-  
-
-  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="">
-    <link itemprop="mainEntityOfPage" href="https://guoltan.github.io/2022/08/23/%E6%8E%92%E6%9F%A5%20kubectl%20edit%20%E4%BF%9D%E5%AD%98%E5%A4%B1%E8%B4%A5%E6%80%9D%E8%B7%AF/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.gif">
-      <meta itemprop="name" content="guoltan">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="guoltan个人博客">
-      <meta itemprop="description" content="">
-    </span>
-
-    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
-      <meta itemprop="name" content="undefined | guoltan个人博客">
-      <meta itemprop="description" content="">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          <a href="/2022/08/23/%E6%8E%92%E6%9F%A5%20kubectl%20edit%20%E4%BF%9D%E5%AD%98%E5%A4%B1%E8%B4%A5%E6%80%9D%E8%B7%AF/" class="post-title-link" itemprop="url">排查 kubectl edit 保存失败方法</a>
-        </h2>
-
-        <div class="post-meta-container">
-          <div class="post-meta">
-    <span class="post-meta-item">
-      <span class="post-meta-item-icon">
-        <i class="far fa-calendar"></i>
-      </span>
-      <span class="post-meta-item-text">发表于</span>
-
-      <time title="创建时间：2022-08-23 20:11:25" itemprop="dateCreated datePublished" datetime="2022-08-23T20:11:25+08:00">2022-08-23</time>
-    </span>
-
-  
-    <span class="post-meta-item" title="本文字数">
-      <span class="post-meta-item-icon">
-        <i class="far fa-file-word"></i>
-      </span>
-      <span class="post-meta-item-text">本文字数：</span>
-      <span>1.6k</span>
-    </span>
-    <span class="post-meta-item" title="阅读时长">
-      <span class="post-meta-item-icon">
-        <i class="far fa-clock"></i>
-      </span>
-      <span class="post-meta-item-text">阅读时长 &asymp;</span>
-      <span>3 分钟</span>
-    </span>
-</div>
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-          <h2 id="1-常见原因"><a href="#1-常见原因" class="headerlink" title="1. 常见原因"></a><strong>1. 常见原因</strong></h2><p>保存失败的常见原因如下：</p>
-<ul>
-<li><p>使用 tab 产生空白字符。</p>
-</li>
-<li><p>使用了无效的选项、参数等。</p>
-</li>
-<li><p>value 未使用字符串。</p>
-</li>
-<li><p>环境的 kubernetes 配置了 webhook，提交 YAML 修改到 apiserver 以后需要完成校验，如果校验失败或 webhook 的组件故障，此时 kubectl edit 保存会失败。</p>
-</li>
-</ul>
-<h2 id="2-排查思路"><a href="#2-排查思路" class="headerlink" title="2. 排查思路"></a><strong>2. 排查思路</strong></h2><p>  通过 kubectl edit 保存配置时，如果使用了无效的参数或者语法错误。将会打印相印的错误提示，错误提示的行首有 # 的字符。根据这些提示即可找到故障原因。</p>
-<p>  另一种问题是，保存 YAML 时未产生错误提示，但是保存后产生了类似如下的错误提示 dial tcp: lookup ti-resource-server.ti-base.svc.cluster.local on [::1]:53: dial udp [::1]:53: connect: network is unreachable。这种场景通常是因为 webhook 组件故障引起的。需要解决 webhook 组件故障。</p>
-<h2 id="3-常见错误原因"><a href="#3-常见错误原因" class="headerlink" title="3. 常见错误原因"></a><strong>3. 常见错误原因</strong></h2><h3 id="3-1-did-not-find-expected-key"><a href="#3-1-did-not-find-expected-key" class="headerlink" title="3.1 did not find expected key"></a><strong>3.1 did not find expected key</strong></h3><p>  如果看见 did not find expected key 的错误，通常是空格数量不正确导致的。上下级选项需要保持两个空格。</p>
-<h3 id="3-2-The-edited-file-failed-validation"><a href="#3-2-The-edited-file-failed-validation" class="headerlink" title="3.2 The edited file failed validation"></a><strong>3.2 The edited file failed validation</strong></h3><p>  如果看见类似 invalid value: “The edited file failed validation”: ValidationError(Deployment.spec): unknown field “12345” in io.k8s.api.apps.v1.DeploymentSpec 的错误，通常是使用了错误的选项。可以通过 kubectl explain 资源.spec.选项名称 来获取有效合法的 key、values 值。</p>
-<h3 id="3-3-cannot-convert-int64-to-string"><a href="#3-3-cannot-convert-int64-to-string" class="headerlink" title="3.3 cannot convert int64 to string"></a><strong>3.3 cannot convert int64 to string</strong></h3><p>  未使用”” 将整型数据括起来。常见于添加 nodeSelector 未给 value 配置 “”。</p>
-<h3 id="3-4-no-matches-for-kind-“xxxx”-in-version-“xxxx”"><a href="#3-4-no-matches-for-kind-“xxxx”-in-version-“xxxx”" class="headerlink" title="3.4 no matches for kind “xxxx” in version “xxxx”"></a><strong>3.4 no matches for kind “xxxx” in version “xxxx”</strong></h3><p>  如果看见类似 The edited file had a syntax error: unable to recognize “edited-file”: no matches for kind “Deployment” in version “extension&#x2F;v1beta1” 的错误，通常是 YAML 编辑的资源使用了错误的 apiVersion 导致的。同样可以通过 kubectl explain 指令来获取对应资源的 apiVersion 可用版本。</p>
-<h3 id="3-5-provided-port-is-not-in-the-valid-range-The-range-of-valid-ports-is-xxxx-xxxx"><a href="#3-5-provided-port-is-not-in-the-valid-range-The-range-of-valid-ports-is-xxxx-xxxx" class="headerlink" title="3.5 provided port is not in the valid range. The range of valid ports is xxxx-xxxx"></a><strong>3.5 provided port is not in the valid range. The range of valid ports is xxxx-xxxx</strong></h3><p>  只存在于 service 修改的场景，如果看见类似于 * spec.ports[0].nodePort: Invalid value: 10508: provided port is not in the valid range. The range of valid ports is 30000-32767 的操作，代表修改 service 配置的 NodePort 超出了 kube-apiserver 中 –service-node-port-range 定义的范围，这个范围默认值是 30000-32767，也就是说 NodePort 配置的端口不能超出这个范围。</p>
 
       
     </div>
