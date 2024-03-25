@@ -19,28 +19,29 @@
 
 <script class="next-config" data-name="main" type="application/json">{"hostname":"guoltan.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":false,"version":"8.19.1","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12},"copycode":{"enable":false,"style":null},"fold":{"enable":false,"height":500},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false}}</script><script src="/js/config.js"></script>
 
-    <meta name="description" content="1. 常见原因保存失败的常见原因如下：  使用 tab 产生空白字符。  使用了无效的选项、参数等。  value 未使用字符串。  环境的 kubernetes 配置了 webhook，提交 YAML 修改到 apiserver 以后需要完成校验，如果校验失败或 webhook 的组件故障，此时 kubectl edit 保存会失败。   2. 排查思路  通过 kubectl edit 保存配">
+    <meta name="description" content="1. 背景 部分项目由客户运维，有些客户对 helm 指令不熟悉，客户误操作查询不出 release 会引起一些歧义。本文基于过去的一些处理的案例，对 helm list 不出资源的可能原因进行说明，并解释 helm list -a 和 -A 的区别。 2. 思路2.1. helm list 不出东西怎么办  helm list 是用于列举特定命名空间下的 release。本质上 release">
 <meta property="og:type" content="article">
-<meta property="og:title" content="排查 kubectl edit 保存失败方法">
-<meta property="og:url" content="https://guoltan.github.io/2022/08/23/%E6%8E%92%E6%9F%A5%20kubectl%20edit%20%E4%BF%9D%E5%AD%98%E5%A4%B1%E8%B4%A5%E6%80%9D%E8%B7%AF/index.html">
+<meta property="og:title" content="helm list 显示不出资源原因分析">
+<meta property="og:url" content="https://guoltan.github.io/2023/08/26/helm%20list%20%E6%98%BE%E7%A4%BA%E4%B8%8D%E5%87%BA%E8%B5%84%E6%BA%90%E5%8E%9F%E5%9B%A0%E5%88%86%E6%9E%90/index.html">
 <meta property="og:site_name" content="guoltan个人博客">
-<meta property="og:description" content="1. 常见原因保存失败的常见原因如下：  使用 tab 产生空白字符。  使用了无效的选项、参数等。  value 未使用字符串。  环境的 kubernetes 配置了 webhook，提交 YAML 修改到 apiserver 以后需要完成校验，如果校验失败或 webhook 的组件故障，此时 kubectl edit 保存会失败。   2. 排查思路  通过 kubectl edit 保存配">
+<meta property="og:description" content="1. 背景 部分项目由客户运维，有些客户对 helm 指令不熟悉，客户误操作查询不出 release 会引起一些歧义。本文基于过去的一些处理的案例，对 helm list 不出资源的可能原因进行说明，并解释 helm list -a 和 -A 的区别。 2. 思路2.1. helm list 不出东西怎么办  helm list 是用于列举特定命名空间下的 release。本质上 release">
 <meta property="og:locale" content="zh_CN">
-<meta property="article:published_time" content="2022-08-23T12:11:25.000Z">
-<meta property="article:modified_time" content="2024-01-26T15:14:01.260Z">
+<meta property="article:published_time" content="2023-08-26T10:11:25.000Z">
+<meta property="article:modified_time" content="2024-03-25T14:53:57.853Z">
 <meta property="article:author" content="guoltan">
 <meta property="article:tag" content="K8S">
+<meta property="article:tag" content="Helm">
 <meta name="twitter:card" content="summary">
 
 
-<link rel="canonical" href="https://guoltan.github.io/2022/08/23/%E6%8E%92%E6%9F%A5%20kubectl%20edit%20%E4%BF%9D%E5%AD%98%E5%A4%B1%E8%B4%A5%E6%80%9D%E8%B7%AF/">
+<link rel="canonical" href="https://guoltan.github.io/2023/08/26/helm%20list%20%E6%98%BE%E7%A4%BA%E4%B8%8D%E5%87%BA%E8%B5%84%E6%BA%90%E5%8E%9F%E5%9B%A0%E5%88%86%E6%9E%90/">
 
 
 
-<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://guoltan.github.io/2022/08/23/%E6%8E%92%E6%9F%A5%20kubectl%20edit%20%E4%BF%9D%E5%AD%98%E5%A4%B1%E8%B4%A5%E6%80%9D%E8%B7%AF/","path":"2022/08/23/排查 kubectl edit 保存失败思路/","title":"排查 kubectl edit 保存失败方法"}</script>
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://guoltan.github.io/2023/08/26/helm%20list%20%E6%98%BE%E7%A4%BA%E4%B8%8D%E5%87%BA%E8%B5%84%E6%BA%90%E5%8E%9F%E5%9B%A0%E5%88%86%E6%9E%90/","path":"2023/08/26/helm list 显示不出资源原因分析/","title":"helm list 显示不出资源原因分析"}</script>
 
 <script class="next-config" data-name="calendar" type="application/json">""</script>
-<title>排查 kubectl edit 保存失败方法 | guoltan个人博客</title>
+<title>helm list 显示不出资源原因分析 | guoltan个人博客</title>
   
 
 
@@ -140,7 +141,7 @@
       <div class="sidebar-panel-container">
         <!--noindex-->
         <div class="post-toc-wrap sidebar-panel">
-            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#1-%E5%B8%B8%E8%A7%81%E5%8E%9F%E5%9B%A0"><span class="nav-number">1.</span> <span class="nav-text">1. 常见原因</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-%E6%8E%92%E6%9F%A5%E6%80%9D%E8%B7%AF"><span class="nav-number">2.</span> <span class="nav-text">2. 排查思路</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-%E5%B8%B8%E8%A7%81%E9%94%99%E8%AF%AF%E5%8E%9F%E5%9B%A0"><span class="nav-number">3.</span> <span class="nav-text">3. 常见错误原因</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#3-1-did-not-find-expected-key"><span class="nav-number">3.1.</span> <span class="nav-text">3.1 did not find expected key</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-2-The-edited-file-failed-validation"><span class="nav-number">3.2.</span> <span class="nav-text">3.2 The edited file failed validation</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-3-cannot-convert-int64-to-string"><span class="nav-number">3.3.</span> <span class="nav-text">3.3 cannot convert int64 to string</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-4-no-matches-for-kind-%E2%80%9Cxxxx%E2%80%9D-in-version-%E2%80%9Cxxxx%E2%80%9D"><span class="nav-number">3.4.</span> <span class="nav-text">3.4 no matches for kind “xxxx” in version “xxxx”</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-5-provided-port-is-not-in-the-valid-range-The-range-of-valid-ports-is-xxxx-xxxx"><span class="nav-number">3.5.</span> <span class="nav-text">3.5 provided port is not in the valid range. The range of valid ports is xxxx-xxxx</span></a></li></ol></li></ol></div>
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#1-%E8%83%8C%E6%99%AF"><span class="nav-number">1.</span> <span class="nav-text">1. 背景</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-%E6%80%9D%E8%B7%AF"><span class="nav-number">2.</span> <span class="nav-text">2. 思路</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#2-1-helm-list-%E4%B8%8D%E5%87%BA%E4%B8%9C%E8%A5%BF%E6%80%8E%E4%B9%88%E5%8A%9E"><span class="nav-number">2.1.</span> <span class="nav-text">2.1. helm list 不出东西怎么办</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-2-helm-list-A-%E5%92%8C-a-%E6%9C%89%E4%BB%80%E4%B9%88%E5%8C%BA%E5%88%AB%EF%BC%9F"><span class="nav-number">2.2.</span> <span class="nav-text">2.2. helm list -A 和 -a 有什么区别？</span></a></li></ol></li></ol></div>
         </div>
         <!--/noindex-->
 
@@ -194,7 +195,7 @@
   
 
   <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="https://guoltan.github.io/2022/08/23/%E6%8E%92%E6%9F%A5%20kubectl%20edit%20%E4%BF%9D%E5%AD%98%E5%A4%B1%E8%B4%A5%E6%80%9D%E8%B7%AF/">
+    <link itemprop="mainEntityOfPage" href="https://guoltan.github.io/2023/08/26/helm%20list%20%E6%98%BE%E7%A4%BA%E4%B8%8D%E5%87%BA%E8%B5%84%E6%BA%90%E5%8E%9F%E5%9B%A0%E5%88%86%E6%9E%90/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
       <meta itemprop="image" content="/images/avatar.gif">
@@ -207,12 +208,12 @@
     </span>
 
     <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
-      <meta itemprop="name" content="排查 kubectl edit 保存失败方法 | guoltan个人博客">
+      <meta itemprop="name" content="helm list 显示不出资源原因分析 | guoltan个人博客">
       <meta itemprop="description" content="">
     </span>
       <header class="post-header">
         <h1 class="post-title" itemprop="name headline">
-          排查 kubectl edit 保存失败方法
+          helm list 显示不出资源原因分析
         </h1>
 
         <div class="post-meta-container">
@@ -223,7 +224,7 @@
       </span>
       <span class="post-meta-item-text">发表于</span>
 
-      <time title="创建时间：2022-08-23 20:11:25" itemprop="dateCreated datePublished" datetime="2022-08-23T20:11:25+08:00">2022-08-23</time>
+      <time title="创建时间：2023-08-26 18:11:25" itemprop="dateCreated datePublished" datetime="2023-08-26T18:11:25+08:00">2023-08-26</time>
     </span>
 
   
@@ -239,14 +240,14 @@
         <i class="far fa-file-word"></i>
       </span>
       <span class="post-meta-item-text">本文字数：</span>
-      <span>1.6k</span>
+      <span>974</span>
     </span>
     <span class="post-meta-item" title="阅读时长">
       <span class="post-meta-item-icon">
         <i class="far fa-clock"></i>
       </span>
       <span class="post-meta-item-text">阅读时长 &asymp;</span>
-      <span>3 分钟</span>
+      <span>2 分钟</span>
     </span>
 </div>
 
@@ -256,24 +257,34 @@
     
     
     
-    <div class="post-body" itemprop="articleBody"><h2 id="1-常见原因"><a href="#1-常见原因" class="headerlink" title="1. 常见原因"></a><strong>1. 常见原因</strong></h2><p>保存失败的常见原因如下：</p>
+    <div class="post-body" itemprop="articleBody"><h2 id="1-背景"><a href="#1-背景" class="headerlink" title="1. 背景"></a>1. 背景</h2><p> 部分项目由客户运维，有些客户对 helm 指令不熟悉，客户误操作查询不出 release 会引起一些歧义。本文基于过去的一些处理的案例，对 helm list 不出资源的可能原因进行说明，并解释 helm list -a 和 -A 的区别。</p>
+<h2 id="2-思路"><a href="#2-思路" class="headerlink" title="2. 思路"></a>2. 思路</h2><h3 id="2-1-helm-list-不出东西怎么办"><a href="#2-1-helm-list-不出东西怎么办" class="headerlink" title="2.1. helm list 不出东西怎么办"></a>2.1. helm list 不出东西怎么办</h3><p>  helm list 是用于列举特定命名空间下的 release。本质上 release 是存储在 secret 的（Helm v2 存储在 configmap）。所以 helm list 这个指令实际上可类比为 kubectl get secret -n 命名空间 -l owner&#x3D;helm。如果说 helm list 找不到东西，可能原因如下：</p>
 <ul>
-<li><p>使用 tab 产生空白字符。</p>
+<li><p>helm list 没有加 -n 选项，没有在指定命名空间下查询 release</p>
 </li>
-<li><p>使用了无效的选项、参数等。</p>
+<li><p>资源已被全部删除</p>
 </li>
-<li><p>value 未使用字符串。</p>
+<li><p>资源没有被删除，但是用于追踪状态的 secret 被误删除。</p>
 </li>
-<li><p>环境的 kubernetes 配置了 webhook，提交 YAML 修改到 apiserver 以后需要完成校验，如果校验失败或 webhook 的组件故障，此时 kubectl edit 保存会失败。</p>
+<li><p>错误的使用 helm ls -a 去获取集群当前所有的 release。</p>
 </li>
 </ul>
-<h2 id="2-排查思路"><a href="#2-排查思路" class="headerlink" title="2. 排查思路"></a><strong>2. 排查思路</strong></h2><p>  通过 kubectl edit 保存配置时，如果使用了无效的参数或者语法错误。将会打印相印的错误提示，错误提示的行首有 # 的字符。根据这些提示即可找到故障原因。</p>
-<p>  另一种问题是，保存 YAML 时未产生错误提示，但是保存后产生了类似如下的错误提示 dial tcp: lookup ti-resource-server.ti-base.svc.cluster.local on [::1]:53: dial udp [::1]:53: connect: network is unreachable。这种场景通常是因为 webhook 组件故障引起的。需要解决 webhook 组件故障。</p>
-<h2 id="3-常见错误原因"><a href="#3-常见错误原因" class="headerlink" title="3. 常见错误原因"></a><strong>3. 常见错误原因</strong></h2><h3 id="3-1-did-not-find-expected-key"><a href="#3-1-did-not-find-expected-key" class="headerlink" title="3.1 did not find expected key"></a><strong>3.1 did not find expected key</strong></h3><p>  如果看见 did not find expected key 的错误，通常是空格数量不正确导致的。上下级选项需要保持两个空格。</p>
-<h3 id="3-2-The-edited-file-failed-validation"><a href="#3-2-The-edited-file-failed-validation" class="headerlink" title="3.2 The edited file failed validation"></a><strong>3.2 The edited file failed validation</strong></h3><p>  如果看见类似 invalid value: “The edited file failed validation”: ValidationError(Deployment.spec): unknown field “12345” in io.k8s.api.apps.v1.DeploymentSpec 的错误，通常是使用了错误的选项。可以通过 kubectl explain 资源.spec.选项名称 来获取有效合法的 key、values 值。</p>
-<h3 id="3-3-cannot-convert-int64-to-string"><a href="#3-3-cannot-convert-int64-to-string" class="headerlink" title="3.3 cannot convert int64 to string"></a><strong>3.3 cannot convert int64 to string</strong></h3><p>  未使用”” 将整型数据括起来。常见于添加 nodeSelector 未给 value 配置 “”。</p>
-<h3 id="3-4-no-matches-for-kind-“xxxx”-in-version-“xxxx”"><a href="#3-4-no-matches-for-kind-“xxxx”-in-version-“xxxx”" class="headerlink" title="3.4 no matches for kind “xxxx” in version “xxxx”"></a><strong>3.4 no matches for kind “xxxx” in version “xxxx”</strong></h3><p>  如果看见类似 The edited file had a syntax error: unable to recognize “edited-file”: no matches for kind “Deployment” in version “extension&#x2F;v1beta1” 的错误，通常是 YAML 编辑的资源使用了错误的 apiVersion 导致的。同样可以通过 kubectl explain 指令来获取对应资源的 apiVersion 可用版本。</p>
-<h3 id="3-5-provided-port-is-not-in-the-valid-range-The-range-of-valid-ports-is-xxxx-xxxx"><a href="#3-5-provided-port-is-not-in-the-valid-range-The-range-of-valid-ports-is-xxxx-xxxx" class="headerlink" title="3.5 provided port is not in the valid range. The range of valid ports is xxxx-xxxx"></a><strong>3.5 provided port is not in the valid range. The range of valid ports is xxxx-xxxx</strong></h3><p>  只存在于 service 修改的场景，如果看见类似于 * spec.ports[0].nodePort: Invalid value: 10508: provided port is not in the valid range. The range of valid ports is 30000-32767 的操作，代表修改 service 配置的 NodePort 超出了 kube-apiserver 中 –service-node-port-range 定义的范围，这个范围默认值是 30000-32767，也就是说 NodePort 配置的端口不能超出这个范围。</p>
+<p>基于原因，可检查项：</p>
+<ul>
+<li><p>helm ls 有没有加上 -n 命名空间是否正确</p>
+</li>
+<li><p>资源是否本身已被删除过了，通过 kubectl get pod -A 是否能看到相关业务 Pod。</p>
+</li>
+<li><p>kubectl get secret -A | grep sh.helm.release 检查集群中的保存 release 状态的 secret 是否还存在。</p>
+</li>
+<li><p>是否使用了 helm ls -a 选项。需要修改成 helm ls -A</p>
+</li>
+</ul>
+<h3 id="2-2-helm-list-A-和-a-有什么区别？"><a href="#2-2-helm-list-A-和-a-有什么区别？" class="headerlink" title="2.2. helm list -A 和 -a 有什么区别？"></a>2.2. helm list -A 和 -a 有什么区别？</h3><p>helm list –help 中，给出 -a 、-A 的区别如下</p>
+<p> -a, –all show all releases without any filter applied</p>
+<p> -A, –all-namespaces list releases across all namespaces</p>
+<p>-a 简单翻译就是显示未被筛选的所有 release 版本。对于某些中间状态，默认情况下 helm list 是不会显示的，如果要显示的话，就可以增加 -a 的选项。</p>
+<p>-A 简单的说就是列出集群所有命名空间下的 release。如果对 release 配置在哪个命名空间不大清楚，是可以通过 -A 选项去查询的。</p>
 
     </div>
 
@@ -284,19 +295,20 @@
     <footer class="post-footer">
           <div class="post-tags">
               <a href="/tags/K8S/" rel="tag"># K8S</a>
+              <a href="/tags/Helm/" rel="tag"># Helm</a>
           </div>
 
         
 
           <div class="post-nav">
             <div class="post-nav-item">
-                <a href="/2022/01/17/Evicted/" rel="prev" title="Pod 状态 Evicted 处理思路">
-                  <i class="fa fa-angle-left"></i> Pod 状态 Evicted 处理思路
+                <a href="/2023/08/15/%E6%90%AD%E5%BB%BA%E7%A7%81%E6%9C%89%E5%8C%96%E9%95%9C%E5%83%8F%E4%BB%93%E5%BA%93%20registry/" rel="prev" title="搭建 Kubernetes 私有化镜像仓库 registry">
+                  <i class="fa fa-angle-left"></i> 搭建 Kubernetes 私有化镜像仓库 registry
                 </a>
             </div>
             <div class="post-nav-item">
-                <a href="/2022/09/10/%E5%A6%82%E4%BD%95%E6%9F%A5%E7%9C%8B%E6%9F%90%E8%BF%9B%E7%A8%8B%E5%BB%BA%E7%AB%8B%E7%9A%84%E8%BF%9E%E6%8E%A5%E4%BF%A1%E6%81%AF/" rel="next" title="如何查看某进程建立的连接信息">
-                  如何查看某进程建立的连接信息 <i class="fa fa-angle-right"></i>
+                <a href="/2023/09/11/%E5%A6%82%E4%BD%95%E6%9F%A5%E7%9C%8B%E8%BF%9B%E7%A8%8B%E5%B1%9E%E4%BA%8E%E5%93%AA%E4%B8%AA%E5%AE%B9%E5%99%A8/" rel="next" title="如何查看进程属于哪个容器">
+                  如何查看进程属于哪个容器 <i class="fa fa-angle-right"></i>
                 </a>
             </div>
           </div>
