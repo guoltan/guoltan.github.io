@@ -1214,10 +1214,10 @@
       </tags>
   </entry>
   <entry>
-    <title></title>
-    <url>/2024/03/25/Docker0%E5%AD%90%E7%BD%91%E5%86%B2%E7%AA%81%E5%AF%BC%E8%87%B4%E8%8A%82%E7%82%B9%E6%89%A9%E5%AE%B9%E5%A4%B1%E8%B4%A5/</url>
+    <title>Pod 状态 Pending 处理思路</title>
+    <url>/2022/01/20/Docker0%E5%AD%90%E7%BD%91%E5%86%B2%E7%AA%81%E5%AF%BC%E8%87%B4%E8%8A%82%E7%82%B9%E6%89%A9%E5%AE%B9%E5%A4%B1%E8%B4%A5/</url>
     <content><![CDATA[<h1 id="问题现象"><a href="#问题现象" class="headerlink" title="问题现象"></a>问题现象</h1><p>  tkestack 扩容节点的步骤执行到 <code>EnsureDocker</code> 时失败，提示<code>stat provider/baremetal/res/linux-/docker-linux--19.03.9.tar.gz: no such file or directory</code></p>
-<img src="/2024/03/25/Docker0%E5%AD%90%E7%BD%91%E5%86%B2%E7%AA%81%E5%AF%BC%E8%87%B4%E8%8A%82%E7%82%B9%E6%89%A9%E5%AE%B9%E5%A4%B1%E8%B4%A5/tke-node-add-failure-ensuredocker-1.png" class="" title="tke-node-add-failure-ensuredocker-1.png">
+<img src="/2022/01/20/Docker0%E5%AD%90%E7%BD%91%E5%86%B2%E7%AA%81%E5%AF%BC%E8%87%B4%E8%8A%82%E7%82%B9%E6%89%A9%E5%AE%B9%E5%A4%B1%E8%B4%A5/tke-node-add-failure-ensuredocker-1.png" class="" title="tke-node-add-failure-ensuredocker-1.png">
 
 <h1 id="处理方法"><a href="#处理方法" class="headerlink" title="处理方法"></a>处理方法</h1><h2 id="错误原因"><a href="#错误原因" class="headerlink" title="错误原因"></a>错误原因</h2><p>  出现 <code>EnsureDocker</code> 故障时不一定就是物料问题导致的，docker 安装的步骤实际上是通过二进制包直接覆盖安装。所以一般情况下不大容易出错。出现该类问题可能是网络原因导致的。</p>
 <p>  当出现该类错误时，应该优先确认一下网段冲突的问题，需要确认一下 <code>tke-platform-controller</code> 组件所在的节点使用了 <strong>172.17.0.0&#x2F;16</strong> 网段的地址。该地址段和 docker0 的默认子网存在冲突，会导致网络连通性异常。为什么使用该网段会对扩容步骤造成影响？</p>
@@ -1234,8 +1234,27 @@
 <h3 id="tke-platform-controller-节点使用-172-17-0-0-16-网段的规避方法"><a href="#tke-platform-controller-节点使用-172-17-0-0-16-网段的规避方法" class="headerlink" title="tke-platform-controller 节点使用 172.17.0.0&#x2F;16 网段的规避方法"></a>tke-platform-controller 节点使用 172.17.0.0&#x2F;16 网段的规避方法</h3><h4 id="方案一：通过静态路由规避"><a href="#方案一：通过静态路由规避" class="headerlink" title="方案一：通过静态路由规避"></a>方案一：通过静态路由规避</h4><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta prompt_"># </span><span class="language-bash">在待扩容节点上，添加静态路由</span></span><br><span class="line">route add -net 172.17.1.0/24 gw 172.21.2.1</span><br><span class="line"><span class="meta prompt_"></span></span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">待扩容工作完成以后，修改新扩容节点的 /etc/docker/daemon.json 配置，添加 bip，修改 docker0 的地址段，注意该网段不能和客户环境其他子网地址重复。</span></span><br><span class="line">vim /etc/dockder/daemon.json</span><br><span class="line">&#123;</span><br><span class="line">    ....</span><br><span class="line">    &quot;bip&quot;:&quot;192.168.1.0/24&quot;,   # 增加 bip 配置</span><br><span class="line">    ....</span><br><span class="line">&#125;</span><br><span class="line"><span class="meta prompt_"></span></span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">删除临时添加的静态路由</span></span><br><span class="line">route del -net 172.17.1.0/24 gw 172.21.2.1</span><br></pre></td></tr></table></figure>
 
 <h4 id="方案二：将-tke-platform-controller-迁移到非-172-17-0-0-16-地址段的机器上"><a href="#方案二：将-tke-platform-controller-迁移到非-172-17-0-0-16-地址段的机器上" class="headerlink" title="方案二：将 tke-platform-controller 迁移到非 172.17.0.0&#x2F;16 地址段的机器上"></a>方案二：将 tke-platform-controller 迁移到非 172.17.0.0&#x2F;16 地址段的机器上</h4><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta prompt_"># </span><span class="language-bash">在 tke-platform-controller、tke-platform-api 的 deployment 中增加如下配置</span></span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">位于 spec.template.spec 字段下</span></span><br><span class="line">nodeSelector:</span><br><span class="line">  key: value  #自定义</span><br><span class="line"></span><br><span class="line">注意，在迁移过程中，tke 的集群、机器扩容功能会暂时不可用。通常情况下我们应该尽量在交付初期确认清楚该问题。避免后续运维的扩容阶段引入风险。</span><br></pre></td></tr></table></figure>
-
-
 ]]></content>
+      <tags>
+        <tag>K8S</tag>
+        <tag>tkestack</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>ServiceCatalog 概念</title>
+    <url>/2023/02/10/ServiceCatalog%E6%A6%82%E5%BF%B5/</url>
+    <content><![CDATA[<h1 id="概念"><a href="#概念" class="headerlink" title="概念"></a>概念</h1><p>  服务目录（Service Catalog）可看作是一堆服务的集合，这些服务是由管理员对若干资源打包集成后结果。用户可以查阅这个服务目录获取到环境可被申请、使用的服务。通过调用申请服务按需获取自己需要的能力。其中用户不需要关心具体底层的实现以及其实现的过程。<br>  可参考的例子如公有云，管理员将底层资源池的资源进行抽象，将其整合为一个一个的服务，并在用户端体现一个可用的服务目录（列表），比如常见的云服务器、云硬盘、虚拟私有云等资源。用户访问公有云提供的服务目录，按需申请自己需要的资源。而用户不需要关心购买的服务对应的服务器是如何接入供电，如何上架到机房，如何部署上软件，只需要关注最终提供的可用的实例。<br>  那 Kubernetes 服务目录又是怎么样的东西？是为了解决什么场景的问题？实际上和上面公有云的例子进行关联，不难发现 Kubernetes 服务目录也是用于实现自助服务能力。可以先假设一个场景，用户业务运行在 Kubernetes 集群上，它们需要在 Kubernetes 集群使用数据库，需要集群管理员进行提供。这时候管理员可以怎么做？</p>
+<ul>
+<li><p>接收到用户的工单，然后管理员部署一套数据库集群，然后将数据库里面的一些鉴权、服务地址等信息提供给用户。用户将信息写入到 Secret 声明，然后在对应的 Pod 里面引用。</p>
+</li>
+<li><p>管理员提前抽象出数据库资源，实现按需部署，用户申请数据库资源，管理员审批后环境自动部署数据库实例。并将数据库的信息提供给用户。用户将信息写入到 Secret 声明，然后在对应的 Pod 里面引用。</p>
+<p>从上面的实现方式来看，如果管理员实现了自助服务会简化一定程度上的工作。减少运维人员的工作量。我们可以基于Kubernetes ServiceCatalog 的功能去构建这个能力，将公有云上的服务、或者基于 Kubernetes 集群部署的服务，又或者是机房某个物理机上部署的服务，通过 Service Catalog 以服务代理的形式，将资源封装成服务用来提供给用户自助服务。</p>
+</li>
+</ul>
+<p><code>笔者在编写到一半的时候，发现此项目已经不属于孵化项目，变成退休项目了。相关代码不再维护，镜像、chart 也无法被获取。导致没有办法继续编写下面的内容。。。不过 ServiceCatalog 这种提供自主服务集成的能力，对于某些场景下实际上还是很有用的。待后续了解其他替代方案再进行沉淀记录。</code></p>
+]]></content>
+      <tags>
+        <tag>K8S</tag>
+      </tags>
   </entry>
 </search>

@@ -19,24 +19,28 @@
 
 <script class="next-config" data-name="main" type="application/json">{"hostname":"guoltan.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":false,"version":"8.19.1","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12},"copycode":{"enable":false,"style":null},"fold":{"enable":false,"height":500},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false}}</script><script src="/js/config.js"></script>
 
-    <meta property="og:type" content="website">
-<meta property="og:title" content="guoltan个人博客">
-<meta property="og:url" content="https://guoltan.github.io/archives/2022/08/index.html">
+    <meta name="description" content="概念  服务目录（Service Catalog）可看作是一堆服务的集合，这些服务是由管理员对若干资源打包集成后结果。用户可以查阅这个服务目录获取到环境可被申请、使用的服务。通过调用申请服务按需获取自己需要的能力。其中用户不需要关心具体底层的实现以及其实现的过程。  可参考的例子如公有云，管理员将底层资源池的资源进行抽象，将其整合为一个一个的服务，并在用户端体现一个可用的服务目录（列表），比如常见">
+<meta property="og:type" content="article">
+<meta property="og:title" content="ServiceCatalog 概念">
+<meta property="og:url" content="https://guoltan.github.io/2023/02/10/ServiceCatalog%E6%A6%82%E5%BF%B5/index.html">
 <meta property="og:site_name" content="guoltan个人博客">
+<meta property="og:description" content="概念  服务目录（Service Catalog）可看作是一堆服务的集合，这些服务是由管理员对若干资源打包集成后结果。用户可以查阅这个服务目录获取到环境可被申请、使用的服务。通过调用申请服务按需获取自己需要的能力。其中用户不需要关心具体底层的实现以及其实现的过程。  可参考的例子如公有云，管理员将底层资源池的资源进行抽象，将其整合为一个一个的服务，并在用户端体现一个可用的服务目录（列表），比如常见">
 <meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2023-02-10T12:11:25.000Z">
+<meta property="article:modified_time" content="2024-03-25T15:35:14.414Z">
 <meta property="article:author" content="guoltan">
-<meta property="article:tag" content="摸鱼，自嗨，困奋">
+<meta property="article:tag" content="K8S">
 <meta name="twitter:card" content="summary">
 
 
-<link rel="canonical" href="https://guoltan.github.io/archives/2022/08/">
+<link rel="canonical" href="https://guoltan.github.io/2023/02/10/ServiceCatalog%E6%A6%82%E5%BF%B5/">
 
 
 
-<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":false,"lang":"zh-CN","comments":"","permalink":"","path":"archives/2022/08/index.html","title":""}</script>
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://guoltan.github.io/2023/02/10/ServiceCatalog%E6%A6%82%E5%BF%B5/","path":"2023/02/10/ServiceCatalog概念/","title":"ServiceCatalog 概念"}</script>
 
 <script class="next-config" data-name="calendar" type="application/json">""</script>
-<title>归档 | guoltan个人博客</title>
+<title>ServiceCatalog 概念 | guoltan个人博客</title>
   
 
 
@@ -70,7 +74,7 @@
 
     <a href="/" class="brand" rel="start">
       <i class="logo-line"></i>
-      <h1 class="site-title">guoltan个人博客</h1>
+      <p class="site-title">guoltan个人博客</p>
       <i class="logo-line"></i>
     </a>
   </div>
@@ -123,7 +127,7 @@
   
   <aside class="sidebar">
 
-    <div class="sidebar-inner sidebar-overview-active">
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
       <ul class="sidebar-nav">
         <li class="sidebar-nav-toc">
           文章目录
@@ -136,6 +140,7 @@
       <div class="sidebar-panel-container">
         <!--noindex-->
         <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E6%A6%82%E5%BF%B5"><span class="nav-number">1.</span> <span class="nav-text">概念</span></a></li></ol></div>
         </div>
         <!--/noindex-->
 
@@ -178,49 +183,122 @@
 
     </div>
 
-    <div class="main-inner archive posts-collapse">
+    <div class="main-inner post posts-expand">
 
 
   
-  
-  
-  <div class="post-block">
-    <div class="post-content">
-      <div class="collection-title">
-        <span class="collection-header">嗯..! 目前共计 21 篇日志。 继续努力。</span>
-      </div>
 
-      
-    <div class="collection-year">
-      <span class="collection-header">2022</span>
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://guoltan.github.io/2023/02/10/ServiceCatalog%E6%A6%82%E5%BF%B5/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="guoltan">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="guoltan个人博客">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="ServiceCatalog 概念 | guoltan个人博客">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          ServiceCatalog 概念
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+
+      <time title="创建时间：2023-02-10 20:11:25" itemprop="dateCreated datePublished" datetime="2023-02-10T20:11:25+08:00">2023-02-10</time>
+    </span>
+
+  
+    <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv">
+      <span class="post-meta-item-icon">
+        <i class="far fa-eye"></i>
+      </span>
+      <span class="post-meta-item-text">阅读次数：</span>
+      <span id="busuanzi_value_page_pv"></span>
+    </span>
+    <span class="post-meta-item" title="本文字数">
+      <span class="post-meta-item-icon">
+        <i class="far fa-file-word"></i>
+      </span>
+      <span class="post-meta-item-text">本文字数：</span>
+      <span>996</span>
+    </span>
+    <span class="post-meta-item" title="阅读时长">
+      <span class="post-meta-item-icon">
+        <i class="far fa-clock"></i>
+      </span>
+      <span class="post-meta-item-text">阅读时长 &asymp;</span>
+      <span>2 分钟</span>
+    </span>
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><h1 id="概念"><a href="#概念" class="headerlink" title="概念"></a>概念</h1><p>  服务目录（Service Catalog）可看作是一堆服务的集合，这些服务是由管理员对若干资源打包集成后结果。用户可以查阅这个服务目录获取到环境可被申请、使用的服务。通过调用申请服务按需获取自己需要的能力。其中用户不需要关心具体底层的实现以及其实现的过程。<br>  可参考的例子如公有云，管理员将底层资源池的资源进行抽象，将其整合为一个一个的服务，并在用户端体现一个可用的服务目录（列表），比如常见的云服务器、云硬盘、虚拟私有云等资源。用户访问公有云提供的服务目录，按需申请自己需要的资源。而用户不需要关心购买的服务对应的服务器是如何接入供电，如何上架到机房，如何部署上软件，只需要关注最终提供的可用的实例。<br>  那 Kubernetes 服务目录又是怎么样的东西？是为了解决什么场景的问题？实际上和上面公有云的例子进行关联，不难发现 Kubernetes 服务目录也是用于实现自助服务能力。可以先假设一个场景，用户业务运行在 Kubernetes 集群上，它们需要在 Kubernetes 集群使用数据库，需要集群管理员进行提供。这时候管理员可以怎么做？</p>
+<ul>
+<li><p>接收到用户的工单，然后管理员部署一套数据库集群，然后将数据库里面的一些鉴权、服务地址等信息提供给用户。用户将信息写入到 Secret 声明，然后在对应的 Pod 里面引用。</p>
+</li>
+<li><p>管理员提前抽象出数据库资源，实现按需部署，用户申请数据库资源，管理员审批后环境自动部署数据库实例。并将数据库的信息提供给用户。用户将信息写入到 Secret 声明，然后在对应的 Pod 里面引用。</p>
+<p>从上面的实现方式来看，如果管理员实现了自助服务会简化一定程度上的工作。减少运维人员的工作量。我们可以基于Kubernetes ServiceCatalog 的功能去构建这个能力，将公有云上的服务、或者基于 Kubernetes 集群部署的服务，又或者是机房某个物理机上部署的服务，通过 Service Catalog 以服务代理的形式，将资源封装成服务用来提供给用户自助服务。</p>
+</li>
+</ul>
+<p><code>笔者在编写到一半的时候，发现此项目已经不属于孵化项目，变成退休项目了。相关代码不再维护，镜像、chart 也无法被获取。导致没有办法继续编写下面的内容。。。不过 ServiceCatalog 这种提供自主服务集成的能力，对于某些场景下实际上还是很有用的。待后续了解其他替代方案再进行沉淀记录。</code></p>
+
     </div>
 
-  <article itemscope itemtype="http://schema.org/Article">
-    <header class="post-header">
-      <div class="post-meta-container">
-        <time itemprop="dateCreated"
-              datetime="2022-08-23T20:11:25+08:00"
-              content="2022-08-23">
-          08-23
-        </time>
-      </div>
+    
+    
+    
 
-      <div class="post-title">
-        <a class="post-title-link" href="/2022/08/23/%E6%8E%92%E6%9F%A5%20kubectl%20edit%20%E4%BF%9D%E5%AD%98%E5%A4%B1%E8%B4%A5%E6%80%9D%E8%B7%AF/" itemprop="url">
-          <span itemprop="name">排查 kubectl edit 保存失败方法</span>
-        </a>
-      </div>
+    <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/K8S/" rel="tag"># K8S</a>
+          </div>
 
-      
-    </header>
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/2022/11/10/Redis%E5%93%8D%E5%BA%94%E6%85%A2%E5%AF%BC%E8%87%B4%E6%8E%A5%E5%8F%A3%E8%B6%85%E6%97%B6%E9%97%AE%E9%A2%98%E5%88%86%E6%9E%90/" rel="prev" title="Redis响应慢导致接口超时问题分析">
+                  <i class="fa fa-angle-left"></i> Redis响应慢导致接口超时问题分析
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/2023/08/15/%E6%90%AD%E5%BB%BA%E7%A7%81%E6%9C%89%E5%8C%96%E9%95%9C%E5%83%8F%E4%BB%93%E5%BA%93%20registry/" rel="next" title="搭建 Kubernetes 私有化镜像仓库 registry">
+                  搭建 Kubernetes 私有化镜像仓库 registry <i class="fa fa-angle-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
   </article>
+</div>
 
 
-    </div>
-  </div>
-  
-  
-  
+
+
+
 
 </div>
   </main>
