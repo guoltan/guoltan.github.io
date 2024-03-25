@@ -1214,10 +1214,10 @@
       </tags>
   </entry>
   <entry>
-    <title>Pod 状态 Pending 处理思路</title>
-    <url>/2022/01/20/Docker0%E5%AD%90%E7%BD%91%E5%86%B2%E7%AA%81%E5%AF%BC%E8%87%B4%E8%8A%82%E7%82%B9%E6%89%A9%E5%AE%B9%E5%A4%B1%E8%B4%A5/</url>
+    <title>Docker0子网冲突导致节点扩容失败</title>
+    <url>/2021/09/08/Docker0%E5%AD%90%E7%BD%91%E5%86%B2%E7%AA%81%E5%AF%BC%E8%87%B4%E8%8A%82%E7%82%B9%E6%89%A9%E5%AE%B9%E5%A4%B1%E8%B4%A5/</url>
     <content><![CDATA[<h1 id="问题现象"><a href="#问题现象" class="headerlink" title="问题现象"></a>问题现象</h1><p>  tkestack 扩容节点的步骤执行到 <code>EnsureDocker</code> 时失败，提示<code>stat provider/baremetal/res/linux-/docker-linux--19.03.9.tar.gz: no such file or directory</code></p>
-<img src="/2022/01/20/Docker0%E5%AD%90%E7%BD%91%E5%86%B2%E7%AA%81%E5%AF%BC%E8%87%B4%E8%8A%82%E7%82%B9%E6%89%A9%E5%AE%B9%E5%A4%B1%E8%B4%A5/tke-node-add-failure-ensuredocker-1.png" class="" title="tke-node-add-failure-ensuredocker-1.png">
+<img src="/2021/09/08/Docker0%E5%AD%90%E7%BD%91%E5%86%B2%E7%AA%81%E5%AF%BC%E8%87%B4%E8%8A%82%E7%82%B9%E6%89%A9%E5%AE%B9%E5%A4%B1%E8%B4%A5/tke-node-add-failure-ensuredocker-1.png" class="" title="tke-node-add-failure-ensuredocker-1.png">
 
 <h1 id="处理方法"><a href="#处理方法" class="headerlink" title="处理方法"></a>处理方法</h1><h2 id="错误原因"><a href="#错误原因" class="headerlink" title="错误原因"></a>错误原因</h2><p>  出现 <code>EnsureDocker</code> 故障时不一定就是物料问题导致的，docker 安装的步骤实际上是通过二进制包直接覆盖安装。所以一般情况下不大容易出错。出现该类问题可能是网络原因导致的。</p>
 <p>  当出现该类错误时，应该优先确认一下网段冲突的问题，需要确认一下 <code>tke-platform-controller</code> 组件所在的节点使用了 <strong>172.17.0.0&#x2F;16</strong> 网段的地址。该地址段和 docker0 的默认子网存在冲突，会导致网络连通性异常。为什么使用该网段会对扩容步骤造成影响？</p>
