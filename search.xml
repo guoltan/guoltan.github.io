@@ -2143,28 +2143,31 @@
 ]]></content>
   </entry>
   <entry>
-    <title></title>
-    <url>/2024/03/26/%E8%B5%84%E6%BA%90%E7%A2%8E%E7%89%87%E5%AF%BC%E8%87%B4Pod%E8%B0%83%E5%BA%A6%E5%A4%B1%E8%B4%A5%E9%97%AE%E9%A2%98%E5%B0%8F%E8%AE%B0/</url>
+    <title>资源碎片导致 Pod 调度失败问题记录</title>
+    <url>/2021/02/23/%E8%B5%84%E6%BA%90%E7%A2%8E%E7%89%87%E5%AF%BC%E8%87%B4Pod%E8%B0%83%E5%BA%A6%E5%A4%B1%E8%B4%A5%E9%97%AE%E9%A2%98%E5%B0%8F%E8%AE%B0/</url>
     <content><![CDATA[<p>算法启动 （kubectl get deploy -n ns-1|grep -v NAME|awk ‘{print $1}’|xargs kubectl scale deploy -n ns-1 –replicas&#x3D;1）</p>
 <p>执行完以后，有两个 Pod处于 Pending 状态，没有调度上节点。</p>
-<img src="/2024/03/26/%E8%B5%84%E6%BA%90%E7%A2%8E%E7%89%87%E5%AF%BC%E8%87%B4Pod%E8%B0%83%E5%BA%A6%E5%A4%B1%E8%B4%A5%E9%97%AE%E9%A2%98%E5%B0%8F%E8%AE%B0/1.png" class="" title="1.png">
+<img src="/2021/02/23/%E8%B5%84%E6%BA%90%E7%A2%8E%E7%89%87%E5%AF%BC%E8%87%B4Pod%E8%B0%83%E5%BA%A6%E5%A4%B1%E8%B4%A5%E9%97%AE%E9%A2%98%E5%B0%8F%E8%AE%B0/1.png" class="" title="1.png">
 
-<img src="/2024/03/26/%E8%B5%84%E6%BA%90%E7%A2%8E%E7%89%87%E5%AF%BC%E8%87%B4Pod%E8%B0%83%E5%BA%A6%E5%A4%B1%E8%B4%A5%E9%97%AE%E9%A2%98%E5%B0%8F%E8%AE%B0/2.png" class="" title="2.png">
+<img src="/2021/02/23/%E8%B5%84%E6%BA%90%E7%A2%8E%E7%89%87%E5%AF%BC%E8%87%B4Pod%E8%B0%83%E5%BA%A6%E5%A4%B1%E8%B4%A5%E9%97%AE%E9%A2%98%E5%B0%8F%E8%AE%B0/2.png" class="" title="2.png">
 
 <p>分析了各个节点的资源使用情况。从总体资源上来看，实际上 4 个节点 16 张卡是能满足调度需求，但最后还是有两个 Pod 因为资源不足无法调度上。</p>
-<img src="/2024/03/26/%E8%B5%84%E6%BA%90%E7%A2%8E%E7%89%87%E5%AF%BC%E8%87%B4Pod%E8%B0%83%E5%BA%A6%E5%A4%B1%E8%B4%A5%E9%97%AE%E9%A2%98%E5%B0%8F%E8%AE%B0/3.png" class="" title="3.png">
+<img src="/2021/02/23/%E8%B5%84%E6%BA%90%E7%A2%8E%E7%89%87%E5%AF%BC%E8%87%B4Pod%E8%B0%83%E5%BA%A6%E5%A4%B1%E8%B4%A5%E9%97%AE%E9%A2%98%E5%B0%8F%E8%AE%B0/3.png" class="" title="3.png">
 
 <p>由于在其他局点已经遇到过类似的情况，可能是小份额的算法把位置占用了，导致大份额的算法无法调度上导致的。<strong>举一个简单的用例说明这种场景</strong></p>
 <p>当前有两个节点，每个节点各有一张卡，节点1 剩余 20 份 cuda-core，节点 2 剩余 50 份 cuda-core。</p>
-<p> <img src="/2024/03/26/%E8%B5%84%E6%BA%90%E7%A2%8E%E7%89%87%E5%AF%BC%E8%87%B4Pod%E8%B0%83%E5%BA%A6%E5%A4%B1%E8%B4%A5%E9%97%AE%E9%A2%98%E5%B0%8F%E8%AE%B0/4.png" class="" title="4.png"></p>
+<p> <img src="/2021/02/23/%E8%B5%84%E6%BA%90%E7%A2%8E%E7%89%87%E5%AF%BC%E8%87%B4Pod%E8%B0%83%E5%BA%A6%E5%A4%B1%E8%B4%A5%E9%97%AE%E9%A2%98%E5%B0%8F%E8%AE%B0/4.png" class="" title="4.png"></p>
 <p>这个时候我有两个算法需要跑，其中 A 算法是需要 cuda-core 50，B 算法需要 cuda-core 20。</p>
 <p>如果先调度 A 算法的情况下，由于它的需求量是 50，这个时候只能往节点 2 上去调用。这个时候再去调度 B 算法，它就会往节点 1 上调用。此时两个算法都能运行。</p>
 <p>如果先调度 B 算法的情况下，由于它的需求量是 20 ，节点 1 和 节点 2 都能满足。如果 B 算法先调度到了 节点 2 ，此时 B 算法能够运行。但 A 算法的需求量是 50。当前已经没有节点能满足需求调度需求了。</p>
-<img src="/2024/03/26/%E8%B5%84%E6%BA%90%E7%A2%8E%E7%89%87%E5%AF%BC%E8%87%B4Pod%E8%B0%83%E5%BA%A6%E5%A4%B1%E8%B4%A5%E9%97%AE%E9%A2%98%E5%B0%8F%E8%AE%B0/5.png" class="" title="5.png">
+<img src="/2021/02/23/%E8%B5%84%E6%BA%90%E7%A2%8E%E7%89%87%E5%AF%BC%E8%87%B4Pod%E8%B0%83%E5%BA%A6%E5%A4%B1%E8%B4%A5%E9%97%AE%E9%A2%98%E5%B0%8F%E8%AE%B0/5.png" class="" title="5.png">
 
 <p>在先调度 B 算法的场景下，就会产生出 “GPU 碎片“ 这些资源无法得到利用。结论：如果存在大量的小份额 GPU 算法时，不对启动顺序进行优化的话。则可能会出现总体资源足够调度，但还是会出现不满足调度条件的 Pod。</p>
 <p>解决方法，将所有算法停止，先启动大份额的算法，再启动小份额的算法。</p>
-<img src="/2024/03/26/%E8%B5%84%E6%BA%90%E7%A2%8E%E7%89%87%E5%AF%BC%E8%87%B4Pod%E8%B0%83%E5%BA%A6%E5%A4%B1%E8%B4%A5%E9%97%AE%E9%A2%98%E5%B0%8F%E8%AE%B0/6.png" class="" title="6.png">
+<img src="/2021/02/23/%E8%B5%84%E6%BA%90%E7%A2%8E%E7%89%87%E5%AF%BC%E8%87%B4Pod%E8%B0%83%E5%BA%A6%E5%A4%B1%E8%B4%A5%E9%97%AE%E9%A2%98%E5%B0%8F%E8%AE%B0/6.png" class="" title="6.png">
 ]]></content>
+      <tags>
+        <tag>K8S</tag>
+      </tags>
   </entry>
 </search>
