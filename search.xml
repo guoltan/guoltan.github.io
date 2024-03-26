@@ -1849,4 +1849,49 @@
 <p><code>helm upgrade myapp --version 4</code></p>
 ]]></content>
   </entry>
+  <entry>
+    <title>Pod 状态 Pending 处理思路</title>
+    <url>/2022/01/20/prometheus%E5%85%A5%E9%97%A8%EF%BC%88%E4%B8%80%EF%BC%89%E6%A6%82%E8%BF%B0/</url>
+    <content><![CDATA[<h1 id="Prometheus-是什么"><a href="#Prometheus-是什么" class="headerlink" title="Prometheus 是什么?"></a>Prometheus 是什么?</h1><p>  Prometheus 是一个开源的系统监控和告警工具，用于收集、存储和查询时间序列数据，并提供灵活的告警机制。它采用拉取方式从目标系统中收集指标数据，支持多维度的标签和时间戳。Prometheus 提供了强大的查询语言PromQL，可用于灵活地查询和分析时间序列数据。</p>
+<h1 id="Prometheus-主要特点"><a href="#Prometheus-主要特点" class="headerlink" title="Prometheus 主要特点"></a>Prometheus 主要特点</h1><ul>
+<li>多维数据模型：使用指标名称和键值对来标识时间序列数据。</li>
+<li>提供 PromQL，一种灵活的查询语言，可以利用这种多维特性进行查询。</li>
+<li>不依赖分布式存储：单个服务器节点具有自治性。</li>
+<li>通过HTTP的 Pull 模型进行时间序列数据的收集。</li>
+<li>支持通过中间网关进行时间序列数据的推送。</li>
+<li>支持动态服务发现和静态配置抓取目标。</li>
+<li>支持多种图形和仪表盘模式。</li>
+</ul>
+<h2 id="Prometheus-组件"><a href="#Prometheus-组件" class="headerlink" title="Prometheus 组件"></a>Prometheus 组件</h2><p>Prometheus生态系统由多个组件组成，其中许多是可选的，如下：</p>
+<ul>
+<li>Prometheus Server，用于抓取和存储时间序列数据</li>
+<li>用于为应用程序代码进行仪表化的客户端库</li>
+<li>用于支持短期作业（如 K8S 的 job）的 pushgateway</li>
+<li>用于特定目的的 exporters，例如：HAProxy、StatsD、Graphite 等</li>
+<li>用于处理警报的 alertmanager</li>
+<li>其他支持工具</li>
+</ul>
+<p>Prometheus 架构图（来源自官网）</p>
+<p><img src="https://prometheus.io/assets/architecture.png" alt="Prometheus architecture"></p>
+<p>什么场景适合用 Prometheus？</p>
+<ul>
+<li><p>云原生场景</p>
+</li>
+<li><p>采集的目标数据不需要长期存储，比如业务运行状态，用户更多可能关注的是近期内应用的状态，长期的数据可以做历史归档。不需要精细的存储监控指标。</p>
+</li>
+</ul>
+<p>什么场景不适合用 Prometheus？</p>
+<ul>
+<li><p>需要 100% 准确性的监控采集场景，如服务请求的计费数据不适用 Prometheus。Prometheus 更多是实现的趋势精准。</p>
+</li>
+<li><p>简单的系统应用场景，或者说传统的一些监控场景，更适合使用 zabbix 类的监控组件去实现。</p>
+</li>
+<li><p>Prometheus 不用于日志存储的场景，日志存储应该使用 loki、elk。也不应用于链路追踪的场景。</p>
+</li>
+</ul>
+]]></content>
+      <tags>
+        <tag>K8S</tag>
+      </tags>
+  </entry>
 </search>
