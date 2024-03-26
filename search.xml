@@ -2009,4 +2009,134 @@
         <tag>K8S</tag>
       </tags>
   </entry>
+  <entry>
+    <title></title>
+    <url>/2024/03/26/Kafka%20%E8%BF%90%E7%BB%B4%E6%8C%87%E4%BB%A4/</url>
+    <content><![CDATA[<h1 id="概述"><a href="#概述" class="headerlink" title="概述"></a><strong>概述</strong></h1><p>  本文主要介绍一些 kafka 常见的操作指令。并指导如何在 TKE 的场景下，对 kafka 进行操作。</p>
+<h1 id="运维指令"><a href="#运维指令" class="headerlink" title="运维指令"></a><strong>运维指令</strong></h1><h2 id="Topic-类"><a href="#Topic-类" class="headerlink" title="Topic 类"></a><strong>Topic 类</strong></h2><h3 id="列出-topic"><a href="#列出-topic" class="headerlink" title="列出 topic"></a><strong>列出 topic</strong></h3><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">sh /opt/kafka/bin/kafka-topics.sh --bootstrap-server kf1:9092,kf2:9092,kf3:9092 --list --exclude-internal --command-config /opt/kafka/config/consumer.properties</span><br></pre></td></tr></table></figure>
+
+<h3 id="查看-topic-详情"><a href="#查看-topic-详情" class="headerlink" title="查看 topic 详情"></a><strong>查看 topic 详情</strong></h3><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">sh /opt/kafka/bin/kafka-topics.sh --bootstrap-server kf1:9092,kf2:9092,kf3:9092 --describe --topic topicname --command-config /opt/kafka/config/consumer.properties</span><br></pre></td></tr></table></figure>
+
+<h3 id="创建-topic"><a href="#创建-topic" class="headerlink" title="创建 topic"></a><strong>创建 topic</strong></h3><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">sh /opt/kafka/bin/kafka-topics.sh --bootstrap-server kf1:9092,kf2:9092,kf3:9092 --create --topic topicname --command-config /opt/kafka/config/consumer.properties</span><br></pre></td></tr></table></figure>
+
+<h3 id="删除指定-topic"><a href="#删除指定-topic" class="headerlink" title="删除指定 topic"></a>删除指定 topic</h3><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">sh /opt/kafka/bin/kafka-topics.sh --bootstrap-server kf1:9092,kf2:9092,kf3:9092 --delete --topic topicname --command-config /opt/kafka/config/consumer.properties</span><br></pre></td></tr></table></figure>
+
+<h2 id="Consumer-groups-类"><a href="#Consumer-groups-类" class="headerlink" title="Consumer groups 类"></a><strong>Consumer groups 类</strong></h2><h3 id="列出-consumer-groups"><a href="#列出-consumer-groups" class="headerlink" title="列出 consumer groups"></a><strong>列出 consumer groups</strong></h3><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">sh /opt/kafka/bin/kafka-consumer-groups.sh --bootstrap-server kf1:9092,kf2:9092,kf3:9092 --list --command-config /opt/kafka/config/consumer.properties</span><br></pre></td></tr></table></figure>
+
+<h3 id="查看-consumer-group-详细信息"><a href="#查看-consumer-group-详细信息" class="headerlink" title="查看 consumer group 详细信息"></a><strong>查看 consumer group 详细信息</strong></h3><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">sh /opt/kafka/bin/kafka-consumer-groups.sh --bootstrap-server kf1:9092,kf2:9092,kf3:9092 --describe --group groupname --command-config /opt/kafka/config/consumer.properties</span><br></pre></td></tr></table></figure>
+
+<h3 id="删除指定-consumer-group"><a href="#删除指定-consumer-group" class="headerlink" title="删除指定 consumer group"></a><strong>删除指定 consumer group</strong></h3><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">sh /opt/kafka/bin/kafka-consumer-groups.sh --bootstrap-server kf1:9092,kf2:9092,kf3:9092  --delete --group groupname --command-config /opt/kafka/config/consumer.properties</span><br></pre></td></tr></table></figure>
+
+<h2 id="生产与消费类"><a href="#生产与消费类" class="headerlink" title="生产与消费类"></a><strong>生产与消费类</strong></h2><h3 id="生产"><a href="#生产" class="headerlink" title="生产"></a><strong>生产</strong></h3><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">sh /opt/kafka/bin/kafka-console-producer.sh --broker-list kf1:9092,kf2:9092,kf3:9092 --topic topicname --producer.config /opt/kafka_2.12-2.2.1/config/producer.properties</span><br></pre></td></tr></table></figure>
+
+<h3 id="消费"><a href="#消费" class="headerlink" title="消费"></a><strong>消费</strong></h3><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">sh /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server kf1:9092,kf2:9092,kf3:9092 --topic topicname --from-beginning --consumer.config /opt/kafka_2.12-2.2.1/config/consumer.properties</span><br></pre></td></tr></table></figure>
+
+<h2 id="查看kafka数据保存时间"><a href="#查看kafka数据保存时间" class="headerlink" title="查看kafka数据保存时间"></a><strong>查看kafka数据保存时间</strong></h2><p>查看topic数据清理策略：</p>
+<p><code>cat /opt/kafka/config/server.properties</code>  查看 <code>log.retention.hours</code> 参数，这个参数含义是kafka数据日志的保存时间，</p>
+<h2 id="重新消费topic全部数据"><a href="#重新消费topic全部数据" class="headerlink" title="重新消费topic全部数据"></a><strong>重新消费topic全部数据</strong></h2><p>场景：需要重新消费一个topic里面的数据</p>
+<p>消费者要从头开始消费某个topic的全量数据，需要满足2个条件（spring-kafka）：</p>
+<p>（1）使用一个全新的”group.id”（就是之前没有被任何消费者使用过）;</p>
+<p>（2）指定”auto.offset.reset”参数的值为earliest；</p>
+<p>修改 <code>/opt/kafka/config/consumer.properties</code> 里面的<code>group.id</code>和<code>auto.offset.reset</code></p>
+<p>把<a href="http://group.id/"><u><span class="15">group.id</span></u></a>值改成一个新的值,<code>auto.offset.reset</code> 值改成 <code>earliest</code>;</p>
+<p>执行消费命令消费topic就可以重头开始消费数据</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">sh /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server kf1:9092,kf2:9092,kf3:9092 --topic topicname --from-beginning --consumer.config /opt/kafka_2.12-2.2.1/config/consumer.properties</span><br></pre></td></tr></table></figure>
+]]></content>
+  </entry>
+  <entry>
+    <title></title>
+    <url>/2024/03/26/Pod%20%E5%86%85%20DNS%20%E6%9C%8D%E5%8A%A1%E8%A7%A3%E6%9E%90%E6%85%A2%E9%97%AE%E9%A2%98%E5%88%86%E6%9E%90/</url>
+    <content><![CDATA[<h1 id="简析-Pod-内部域名解析的过程"><a href="#简析-Pod-内部域名解析的过程" class="headerlink" title="简析 Pod 内部域名解析的过程"></a>简析 Pod 内部域名解析的过程</h1><h2 id="环境准备"><a href="#环境准备" class="headerlink" title="环境准备"></a>环境准备</h2><h3 id="1-创建测试-Pod"><a href="#1-创建测试-Pod" class="headerlink" title="1. 创建测试 Pod"></a>1. 创建测试 Pod</h3><p>创建 busybox.yaml 文件内容如下</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">apiVersion: v1</span><br><span class="line">kind: Pod</span><br><span class="line">metadata:</span><br><span class="line">  name: busybox</span><br><span class="line">  namespace: timatrix</span><br><span class="line">spec:</span><br><span class="line">  containers:</span><br><span class="line">  - name: busybox</span><br><span class="line">    image: centos:latest</span><br><span class="line">    command:</span><br><span class="line">      - sleep</span><br><span class="line">      - &quot;360000&quot;</span><br><span class="line">    imagePullPolicy: IfNotPresent</span><br><span class="line">  restartPolicy: Always</span><br><span class="line">  nodeSelector:</span><br><span class="line">    kubernetes.io/hostname: &quot;192.168.0.2&quot;</span><br></pre></td></tr></table></figure>
+
+<p>执行 <code>kubectl apply -f busybox.yaml</code> 创建 Pod，执行通过以后，执行 <code>kubectl get pod -n timatrix busybox</code> 命令查询 Pod 状态，确保 Pod 处于运行状态。</p>
+<h3 id="2-安装-bind-utils-工具"><a href="#2-安装-bind-utils-工具" class="headerlink" title="2. 安装 bind-utils 工具"></a>2. 安装 bind-utils 工具</h3><p><strong>进入 busybox 容器</strong></p>
+<p><code>kubectl exec -it -n timatrix busybox /bin/bash</code></p>
+<p><strong>安装 bind-utils 工具（需确保当前容器的网络可以访问到 YUM 仓库）</strong></p>
+<p><code>yum -y install bind-utils</code></p>
+<h3 id="3-进行域名解析测试"><a href="#3-进行域名解析测试" class="headerlink" title="3. 进行域名解析测试"></a>3. 进行域名解析测试</h3><p><strong>执行 host 命令，进行域名解析功能验证，示例如下：</strong></p>
+<p><code>host proxysql.ti-base.svc.cluster.local</code></p>
+<p><strong>返回结果如下：</strong></p>
+<p>![image-20210802235935863](D:\My\工作\Tools man\3. 案例与故障排查文档\Kubernetes Pod DNS 解析优化方法.assets\image-20210802235935863.png)</p>
+<h4 id="Pod-请求域名解析过程分析"><a href="#Pod-请求域名解析过程分析" class="headerlink" title="Pod 请求域名解析过程分析"></a>Pod 请求域名解析过程分析</h4><p>通过 host -v 域名 的指令，可以看到客户端请求域名解析的过程</p>
+<p>![image-20210803091036319](D:\My\工作\Tools man\3. 案例与故障排查文档\Kubernetes Pod DNS 解析优化方法.assets\image-20210803091036319.png)</p>
+<p>在 CoreDNS 所在的宿主机上抓包，也能看到客户端发起的解析请求</p>
+<p>![image-20210803091119674](D:\My\工作\Tools man\3. 案例与故障排查文档\Kubernetes Pod DNS 解析优化方法.assets\image-20210803091119674.png)</p>
+<p>从上述的操作来看，我们请求解析 proxysql.ti-base.svc.cluster.local 这个域名，客户端至少发起了四次查询，最终才拿到正确的 A 记录解析结果。</p>
+<p>实际上，只有第四次请求的域名，才存在于 kubernetes 的 DNS 记录中。对于 Kubernetes 来说，它的 DNS 记录全域名的格式通常为 <code>service_name.namespace_name.svc.cluster.local</code> 所以请求发送到第四次，CoreDNS 才能正确的返回 A 记录。</p>
+<p>为什么会产生多余的解析请求，这个和默认的 &#x2F;etc&#x2F;resolv.conf 配置有关，打开 &#x2F;etc&#x2F;resolv.conf，我们可以看到容器内部会有如下默认配置。</p>
+<p>![image-20210803092022332](D:\My\工作\Tools man\3. 案例与故障排查文档\Kubernetes Pod DNS 解析优化方法.assets\image-20210803092022332.png)</p>
+<p>这些配置项的作用如下：</p>
+<ul>
+<li>nameserver 用于配置 DNS 服务器，本地 hosts 无法解析域名的情况下，解析域名的请求将会发送到这个服务器地址上。</li>
+<li>search 用于主机名查找的列表，当用户提交的主机名中，带有的 . 数量低于 ndots 设置的值时，会把用户提交的主机名加上 search 配置的域进行查询。</li>
+<li>options ndots，用于控制 . 的数量，默认值为 5。这代表如果 Pod 请求域名的 . 数小于 5 时，就会先遍历 search 定义的域，组合成主机名再查询。</li>
+</ul>
+<p>当前 search 中定义了三个域，分别是 <code>timatrix.svc.cluster.local</code> <code>svc.cluster.local</code> <code>cluster.local</code> 而 <code>proxysql.ti-base.svc.cluster.local</code> 这个请求只使用了 4 个 <code>.</code> 这低于 ndots 设置的 5 个 <code>.</code> 于是乎就产生了如下的查询顺序</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta prompt_"># </span><span class="language-bash">第一次查询，coredns 返回无此记录</span></span><br><span class="line">&quot;proxysql.ti-base.svc.cluster.local.timatrix.svc.cluster.local&quot;</span><br><span class="line"><span class="meta prompt_"></span></span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">第二次查询，coredns 返回无此记录</span></span><br><span class="line">&quot;proxysql.ti-base.svc.cluster.local.svc.cluster.local&quot;</span><br><span class="line"><span class="meta prompt_"></span></span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">第三次查询，coredns 返回无此记录</span></span><br><span class="line">&quot;proxysql.ti-base.svc.cluster.local.cluster.local&quot;</span><br><span class="line"><span class="meta prompt_"></span></span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">第四次查询，当 主机名 + search域 都无法返回查询结果时，才直接使用提交的主机名进行查询</span></span><br><span class="line">&quot;proxysql.ti-base.svc.cluster.local&quot;</span><br></pre></td></tr></table></figure>
+
+<h4 id="search-配置项带来的风险"><a href="#search-配置项带来的风险" class="headerlink" title="search 配置项带来的风险"></a>search 配置项带来的风险</h4><p>如果我们的 Pod 在调用 service 的时候，填写的是 <code>service_name.namespace_name.svc.cluster.local</code> 这种的形式时，如 <code>proxysql.ti-base.svc.cluster.local.timatrix.svc.cluster.local</code> 这个时候会因为 <code>.</code> 的数量小于 ndots 设置的值，此时请求的主机名将会和 search 配置的域进行组合成 FQDN 再进行请求，在此处实际上存在一个问题，如果 search 中引入了一个无效的域时，可能会影响到客户端请求域名解析的工作。</p>
+<p>编辑 busybox 容器里的 &#x2F;etc&#x2F;resolv.conf 配置文件，在 search 中添加一个 aaa 的域。</p>
+<p>![image-20210803100346723](D:\My\工作\Tools man\3. 案例与故障排查文档\Kubernetes Pod DNS 解析优化方法.assets\image-20210803100346723.png)</p>
+<blockquote>
+<p>只要 Pod 所在的宿主机 &#x2F;etc&#x2F;resolv.conf 上配置了 search，在创建 Pod 时都会自动添加到容器的 &#x2F;etc&#x2F;resolv.conf 中。</p>
+</blockquote>
+<p>此时再通过 host 指令，发起解析请求，可以看到在解析时，增加了一次查询，新增查询的记录为 <code>proxysql.ti-base.svc.cluster.local.aaa</code></p>
+<p>![image-20210803101544682](D:\My\工作\Tools man\3. 案例与故障排查文档\Kubernetes Pod DNS 解析优化方法.assets\image-20210803101544682.png)</p>
+<p>在 coredns 所在的宿主机上抓包，可以看到的是，这个域名请求实际上会转发给 183.60.83.19 这台上级 DNS，这是因为 coredns 默认情况下会将本地无法解析的域名，转发给 coredns 所在节点 &#x2F;etc&#x2F;resolv.conf 配置的 nameserver上。</p>
+<p>![image-20210803101850591](D:\My\工作\Tools man\3. 案例与故障排查文档\Kubernetes Pod DNS 解析优化方法.assets\image-20210803101850591.png)</p>
+<p>可以看到的是，如果 coredns 对于无法解析的域名，都会转发给上级服务器。而这个操作实际上引入了一个 244 毫秒的查询耗时，这还是在网络连通性正常的情况下，如果 coredns 无法及时得到上级 DNS 的响应。会阻塞到整个域名解析的请求工作。</p>
+<p>修改 coredns 所在宿主机的 &#x2F;etc&#x2F;resolv.conf 配置，将 nameserver 的地址设置为一个无效的 DNS 服务器地址 10.100.100.1</p>
+<p>![image-20210803105213518](D:\My\工作\Tools man\3. 案例与故障排查文档\Kubernetes Pod DNS 解析优化方法.assets\image-20210803105213518.png)</p>
+<p>重启 coredns</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">kubectl delete pod -n kube-system coredns-xxx-xxx</span><br></pre></td></tr></table></figure>
+
+<p>在 busybox 容器中再次发起解析域名的请求</p>
+<p>![image-20210803111514224](D:\My\工作\Tools man\3. 案例与故障排查文档\Kubernetes Pod DNS 解析优化方法.assets\image-20210803111514224.png)</p>
+<p>在 coredns 侧抓包，由于配置了不可达的 DNS 服务器，我们可以看到这次 coredns 转发给上级 DNS 请求，耗费了大量的时间，整个过程大约是 4 秒。虽然最终 busybox 还是可以获取到解析结果。</p>
+<p>![image-20210803111204944](D:\My\工作\Tools man\3. 案例与故障排查文档\Kubernetes Pod DNS 解析优化方法.assets\image-20210803111204944.png)</p>
+<p>一线在交付项目的时候，客户侧提供的机器模板中，虚拟机配置的 nameserver 不一定是有效的，或者说，客户侧的 DNS 服务不一定是可靠的，也有可能会出现故障。所以当 coredns 将请求转发给上级 DNS 时，会很有可能会引入性能问题，影响到容器平台组件的运行。</p>
+<h4 id="规避无效的-search-引入的问题方法"><a href="#规避无效的-search-引入的问题方法" class="headerlink" title="规避无效的 search 引入的问题方法"></a>规避无效的 search 引入的问题方法</h4><p>操作系统自动添加 search 的触发条件比较多， cloudinit、dhclient、网络服务启动都有可能自动添加上 search，目前的想法是开机完成以后，在系统里面自动禁用 search 选项。</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta prompt_"># </span><span class="language-bash">规避开机后自动添加 search 的方法</span></span><br><span class="line">echo &quot;sed -i &#x27;s/^search/#search/&#x27; /etc/resolv.conf&quot; &gt;&gt; /etc/profile.d/disable_search.sh</span><br></pre></td></tr></table></figure>
+
+<p>当前禁用 search 的方法只是避免开机后自动添加 search，对于其他场景如：ifup-post 钩子中存在添加 search 配置的操作时，这个方法是无效的，并且客户的操作系统究竟有哪些添加 search 的配置项我们是很难去控制的。</p>
+<p>并且禁用宿主机 &#x2F;etc&#x2F;resolv.conf 中的 search 配置其实也只是避免客户端发送 coredns 本地无法处理的解析请求，我们在调用服务，请求域名解析时依旧引入了一些无效的域名解析工作。我认为要在 Pod 请求 DNS 就需要做优化。避免引入一些额外的查询开销或风险。</p>
+<h1 id="Pod-请求-DNS-解析域名优化方案"><a href="#Pod-请求-DNS-解析域名优化方案" class="headerlink" title="Pod 请求 DNS 解析域名优化方案"></a>Pod 请求 DNS 解析域名优化方案</h1><h2 id="方案一，优化请求服务的域名"><a href="#方案一，优化请求服务的域名" class="headerlink" title="方案一，优化请求服务的域名"></a>方案一，优化请求服务的域名</h2><p>各个组件在调用 service 的配置中，使用如下规则：</p>
+<ul>
+<li>同命名空间下的 svc 调用，只填写 svc 名称，如调用 proxysql.ti-base.svc.cluster.local，仅填写 proxysql</li>
+<li>不同命名空间下的 svc 调用，填写svc名称.命名空间名称，如调用 proxysql.ti-base.svc.cluster.local，仅填写 proxysql.ti-base</li>
+</ul>
+<h3 id="在同一个命名空间下调用，仅使用-svc-名称的原因"><a href="#在同一个命名空间下调用，仅使用-svc-名称的原因" class="headerlink" title="在同一个命名空间下调用，仅使用 svc 名称的原因"></a>在同一个命名空间下调用，仅使用 svc 名称的原因</h3><p> Pod 创建时会添加 search，第一个 search 域是 命名空间.svc.cluster.local。如果 Pod 调用的 svc 刚好是相同命名空间下，在解析时只写 svcname，这个时候会和 search 组合成完整的域名。可参考如下解析过程，整个过程只发起了一次解析请求。</p>
+<p>![image-20210803120009040](D:\My\工作\Tools man\3. 案例与故障排查文档\Kubernetes Pod DNS 解析优化方法.assets\image-20210803120009040.png)</p>
+<h3 id="在同一个命名空间下调用，填写svc名称-命名空间名称的原因"><a href="#在同一个命名空间下调用，填写svc名称-命名空间名称的原因" class="headerlink" title="在同一个命名空间下调用，填写svc名称.命名空间名称的原因"></a>在同一个命名空间下调用，填写svc名称.命名空间名称的原因</h3><p>当调用的 svc 和调用它的 Pod 处于不同的命名空间下时，在只填写 svc 名称的情况下是无法命中的，可参考下图</p>
+<p>![image-20210803120302221](D:\My\工作\Tools man\3. 案例与故障排查文档\Kubernetes Pod DNS 解析优化方法.assets\image-20210803120302221.png)</p>
+<p>原因是调用 svc 的 Pod 中，search 配置项是不会把其他命名空间加上的。</p>
+<p>![image-20210803120529926](D:\My\工作\Tools man\3. 案例与故障排查文档\Kubernetes Pod DNS 解析优化方法.assets\image-20210803120529926.png)</p>
+<p>此时是无法组合出有效的 kubernetes 域名，当前环境的 timatrix 这个 namespace 下并不存在 proxysql 这个 svc。</p>
+<p>![image-20210803120605239](D:\My\工作\Tools man\3. 案例与故障排查文档\Kubernetes Pod DNS 解析优化方法.assets\image-20210803120605239.png)</p>
+<p>实际上我们要调用的 proxysql 处于 ti-base 命名空间下，此时我们修改请求的域名，调整为 proxysql.ti-base</p>
+<p>![image-20210803120655886](D:\My\工作\Tools man\3. 案例与故障排查文档\Kubernetes Pod DNS 解析优化方法.assets\image-20210803120655886.png)</p>
+<p>这一次可以看到，在请求解析域名时，只提交了两次请求。可以减少无效的解析域名请求。</p>
+<p>最关键的一点是，就算宿主机配置了 search，将 search 的配置添加到容器的 &#x2F;etc&#x2F;resolv.conf 中，它也不会触发问题。只要我们保证请求的域名是一个有效并且存在于 coredns 中的记录即可。</p>
+<h2 id="方案二，使用-FQDN-调用域名"><a href="#方案二，使用-FQDN-调用域名" class="headerlink" title="方案二，使用 FQDN 调用域名"></a>方案二，使用 FQDN 调用域名</h2><p>如果在对接的配置文件中，需要填写完整的域名名称，也可以通过在末尾添加 ‘.’ 来规避，只要请求解析域名时在域名尾部添加一个 <code>.</code>，此时就会直接以 FQDN 去请求，此时会忽略 search 配置。</p>
+<p>未在末尾添加 . 的场景，可以看到会尝试和 search 配置的域进行组合，再提交请求</p>
+<p>![image-20210803121242248](D:\My\工作\Tools man\3. 案例与故障排查文档\Kubernetes Pod DNS 解析优化方法.assets\image-20210803121242248.png)</p>
+<p>添加 . 在末尾的场景，可以看到解析过程中，不会再组合 search 中的域，而是直接提交请求</p>
+<p>![image-20210803121634253](D:\My\工作\Tools man\3. 案例与故障排查文档\Kubernetes Pod DNS 解析优化方法.assets\image-20210803121634253.png)</p>
+<p>如果在调用服务时，在末尾添加一个 <code>.</code> 也可以优化请求，以这个 Pod 为例子，再去调用 <code>proxysql.ti-base.svc.cluster.local</code>，使用 <code>proxysql.ti-base.svc.cluster.local.</code> 即可完成查询</p>
+<p>![image-20210803121532403](D:\My\工作\Tools man\3. 案例与故障排查文档\Kubernetes Pod DNS 解析优化方法.assets\image-20210803121532403.png)</p>
+<p>从查询返回的结果来看。它只提交了一次。</p>
+<p>从 coredns 侧抓包，也可以看到它只收到了一次请求</p>
+<p>![image-20210803121849867](D:\My\工作\Tools man\3. 案例与故障排查文档\Kubernetes Pod DNS 解析优化方法.assets\image-20210803121849867.png)</p>
+<p>这样即可以避免产生了无效的域名解析请求的次数，也保证它不会受到宿主机的 &#x2F;etc&#x2F;resolv.conf 中 search 配置的影响</p>
+<h2 id="方案三，优化-Pod-的-DNS-配置项"><a href="#方案三，优化-Pod-的-DNS-配置项" class="headerlink" title="方案三，优化 Pod 的 DNS 配置项"></a>方案三，优化 Pod 的 DNS 配置项</h2><p>上文中提到 ndots 可以控制请求的域名小于多少的 <code>.</code> 时才去组合 search。可以去调整特定组件的 dnsConfig 配置，调低这个数值。</p>
+<p>使用默认的 ndots: 5 配置时，请求 proxysql.ti-base.svc.cluster.local 的解析过程</p>
+<p>![image-20210803122307077](D:\My\工作\Tools man\3. 案例与故障排查文档\Kubernetes Pod DNS 解析优化方法.assets\image-20210803122307077.png)</p>
+<p>调整 ndots: 5 配置为 ndots: 2 时，请求 proxysql.ti-base.svc.cluster.local 的解析过程</p>
+<p>![image-20210803122356111](D:\My\工作\Tools man\3. 案例与故障排查文档\Kubernetes Pod DNS 解析优化方法.assets\image-20210803122356111.png)</p>
+<p>通过合理的调整 ndots，也可以减少产生无效的域名解析请求，并且也可以避免宿主机 search 带来的影响。</p>
+<p>在实际运用中配置实际上需要在 deployment、statefulset、pod 处指定，可参考如下</p>
+<figure class="highlight yaml"><table><tr><td class="code"><pre><span class="line"><span class="attr">apiVersion:</span> <span class="string">v1</span></span><br><span class="line"><span class="attr">kind:</span> <span class="string">Pod</span></span><br><span class="line"><span class="attr">metadata:</span></span><br><span class="line">  <span class="attr">name:</span> <span class="string">busybox</span></span><br><span class="line">  <span class="attr">namespace:</span> <span class="string">timatrix</span></span><br><span class="line"><span class="attr">spec:</span></span><br><span class="line">  <span class="attr">containers:</span></span><br><span class="line">  <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">busybox</span></span><br><span class="line">    <span class="attr">image:</span> <span class="string">centos:latest</span></span><br><span class="line">    <span class="attr">command:</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">sleep</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">&quot;360000&quot;</span></span><br><span class="line">    <span class="attr">imagePullPolicy:</span> <span class="string">IfNotPresent</span></span><br><span class="line">  <span class="attr">restartPolicy:</span> <span class="string">Always</span></span><br><span class="line">  <span class="attr">nodeSelector:</span></span><br><span class="line">    <span class="attr">kubernetes.io/hostname:</span> <span class="string">&quot;192.168.0.2&quot;</span></span><br><span class="line">  <span class="attr">dnsConfig:</span></span><br><span class="line">    <span class="attr">options:</span></span><br><span class="line">      <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">ndots</span></span><br><span class="line">        <span class="attr">value:</span> <span class="string">&quot;2&quot;</span></span><br></pre></td></tr></table></figure>
+]]></content>
+  </entry>
 </search>
