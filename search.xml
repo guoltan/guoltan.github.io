@@ -2173,4 +2173,93 @@
         <tag>K8S</tag>
       </tags>
   </entry>
+  <entry>
+    <title>rsync + notify 对比 rclone 数据同步</title>
+    <url>/2021/01/22/rsync+notify%20%E5%AF%B9%E6%AF%94%20rclone/</url>
+    <content><![CDATA[<h1 id="背景"><a href="#背景" class="headerlink" title="背景"></a>背景</h1><p>  某项目需要实现镜像仓库的数据同步，目前只能提供类 cfs 的存储实例，需要我们自行在存储层面去数据同步功能。</p>
+<p>  为此调研出可行的方法有 rsync + notify 和 rclone。本文主要是用于记录这两种方式是否可以满足数据同步的需求。</p>
+<h1 id="测试环境信息"><a href="#测试环境信息" class="headerlink" title="测试环境信息"></a><strong>测试环境信息</strong></h1><p>公有云环境，在广州四区申请了一台 CVM、两个 CFS。</p>
+<img src="/2021/01/22/rsync+notify%20%E5%AF%B9%E6%AF%94%20rclone/1.png" class="" title="1.png">
+
+<img src="/2021/01/22/rsync+notify%20%E5%AF%B9%E6%AF%94%20rclone/2.png" class="" title="2.png">
+
+<p>在 CVM 上创建 &#x2F;data1 和 &#x2F;data2 目录，分别以 NFS 的方式挂载 CFS。</p>
+<p>在 CVM 上的挂载配置</p>
+<img src="/2021/01/22/rsync+notify%20%E5%AF%B9%E6%AF%94%20rclone/3.png" class="" title="3.png">
+
+<p>&#x2F;data1 目录对应的是 cfs1，172.16.0.5</p>
+<p>&#x2F;data2 目录对应的是 cfs2，172.16.0.239</p>
+<h1 id="验证过程"><a href="#验证过程" class="headerlink" title="验证过程"></a>验证过程</h1><h2 id="Rsync-notify-的方式"><a href="#Rsync-notify-的方式" class="headerlink" title="Rsync + notify 的方式"></a><strong>Rsync + notify 的方式</strong></h2><p>a2b.sh 是 rsync + inotify 的执行脚本内容。测试之前已将起运行起来。</p>
+<img src="/2021/01/22/rsync+notify%20%E5%AF%B9%E6%AF%94%20rclone/4.png" class="" title="4.png">
+
+<h3 id="场景1：拷贝文件到-cfs-1-挂载的目录，查看是否会自动同步数据到-cfs-2"><a href="#场景1：拷贝文件到-cfs-1-挂载的目录，查看是否会自动同步数据到-cfs-2" class="headerlink" title="场景1：拷贝文件到 cfs-1 挂载的目录，查看是否会自动同步数据到 cfs-2"></a><strong>场景1：拷贝文件到 cfs-1 挂载的目录，查看是否会自动同步数据到 cfs-2</strong></h3><p>将 aplusb_demo.tar.gz 这个文件拷贝到 &#x2F;data1 目录下，查看其是否会自动同步到 &#x2F;data2。拷贝了以后，等待了两分钟，仅是在 &#x2F;data2 下创建了改文件。但是内容是空的。</p>
+<img src="/2021/01/22/rsync+notify%20%E5%AF%B9%E6%AF%94%20rclone/5.png" class="" title="5.png">
+
+<p>此时尝试拷贝一个小文件。触发增量更新。发现 &#x2F;data2 只是小文件更新上了。大文件的内容依旧是空的。</p>
+<img src="/2021/01/22/rsync+notify%20%E5%AF%B9%E6%AF%94%20rclone/6.png" class="" title="6.png">
+
+<img src="/2021/01/22/rsync+notify%20%E5%AF%B9%E6%AF%94%20rclone/7.png" class="" title="7.png">
+
+<p>尝试删除 &#x2F;data1 和 &#x2F;data2 的数据，重新将aplusb_demo.tar.gz 拷贝到 &#x2F;data1，此时可以rsync 同步成功。（执行命令是连续的，中间未有间隔时间）</p>
+<img src="/2021/01/22/rsync+notify%20%E5%AF%B9%E6%AF%94%20rclone/8.png" class="" title="8.png">
+
+<p>此时再尝试重新删除数据，再次拷贝到 &#x2F;data1 测试同步能力，能够正常同步。</p>
+<img src="/2021/01/22/rsync+notify%20%E5%AF%B9%E6%AF%94%20rclone/9.png" class="" title="9.png">
+
+<h3 id="场景2：删除-cfs-2-挂载目录的文件内容。测试是否能够重新通过-rsync-从-cfs-1-拉取。"><a href="#场景2：删除-cfs-2-挂载目录的文件内容。测试是否能够重新通过-rsync-从-cfs-1-拉取。" class="headerlink" title="场景2：删除 cfs-2 挂载目录的文件内容。测试是否能够重新通过 rsync 从 cfs-1 拉取。"></a><strong>场景2：删除 cfs-2 挂载目录的文件内容。测试是否能够重新通过 rsync 从 cfs-1 拉取。</strong></h3><p>主动删除了&#x2F;data2 目录的内容</p>
+<img src="/2021/01/22/rsync+notify%20%E5%AF%B9%E6%AF%94%20rclone/10.png" class="" title="10.png">
+
+<p>删除以后，等待了 1 分钟，数据依旧没有任何变化。</p>
+<p>此时拷贝任意文件到 &#x2F;data1 目录下，会重新触发同步。</p>
+<img src="/2021/01/22/rsync+notify%20%E5%AF%B9%E6%AF%94%20rclone/11.png" class="" title="11.png">
+
+<h3 id="场景3：删除-cfs-1-挂载目录的文件内容。查看是否会自动同步删除请求到-cfs-2-的目录。"><a href="#场景3：删除-cfs-1-挂载目录的文件内容。查看是否会自动同步删除请求到-cfs-2-的目录。" class="headerlink" title="场景3：删除 cfs-1 挂载目录的文件内容。查看是否会自动同步删除请求到 cfs-2 的目录。"></a><strong>场景3：删除 cfs-1 挂载目录的文件内容。查看是否会自动同步删除请求到 cfs-2 的目录。</strong></h3><p>主动删除 &#x2F;data1 目录下的文件，中间有等待大约一分钟，&#x2F;data2 的数据没有被主动删除。</p>
+<img src="/2021/01/22/rsync+notify%20%E5%AF%B9%E6%AF%94%20rclone/12.png" class="" title="12.png">
+
+<img src="/2021/01/22/rsync+notify%20%E5%AF%B9%E6%AF%94%20rclone/13.png" class="" title="13.png">
+
+
+
+<h2 id="rclone-copy的方式"><a href="#rclone-copy的方式" class="headerlink" title="rclone copy的方式"></a><strong>rclone copy的方式</strong></h2><h3 id="场景1：创建文件，手动执行同步"><a href="#场景1：创建文件，手动执行同步" class="headerlink" title="场景1：创建文件，手动执行同步"></a><strong>场景1：创建文件，手动执行同步</strong></h3><p>小文件同步成功</p>
+<img src="/2021/01/22/rsync+notify%20%E5%AF%B9%E6%AF%94%20rclone/14.png" class="" title="14.png">
+
+<p>大文件同步成功</p>
+<img src="/2021/01/22/rsync+notify%20%E5%AF%B9%E6%AF%94%20rclone/15.png" class="" title="15.png">
+
+<h3 id="场景2：删除-data1-的文件，查看是否能够自动同步-data2"><a href="#场景2：删除-data1-的文件，查看是否能够自动同步-data2" class="headerlink" title="场景2：删除 &#x2F;data1 的文件，查看是否能够自动同步 &#x2F;data2"></a><strong>场景2：删除 &#x2F;data1 的文件，查看是否能够自动同步 &#x2F;data2</strong></h3><p>在 &#x2F;data1 删除文件后，并没有自动同步到 &#x2F;data2</p>
+<img src="/2021/01/22/rsync+notify%20%E5%AF%B9%E6%AF%94%20rclone/16.png" class="" title="16.png">
+
+
+
+<h3 id="rclone-sync-的方式"><a href="#rclone-sync-的方式" class="headerlink" title="rclone sync 的方式"></a><strong>rclone sync 的方式</strong></h3><h3 id="场景1：创建文件，手动执行同步-1"><a href="#场景1：创建文件，手动执行同步-1" class="headerlink" title="场景1：创建文件，手动执行同步"></a><strong>场景1：创建文件，手动执行同步</strong></h3><p>效果和 rclone copy 类似</p>
+<img src="/2021/01/22/rsync+notify%20%E5%AF%B9%E6%AF%94%20rclone/17.png" class="" title="17.png">
+
+<h3 id="场景2：删除-data1-的文件，查看是否能够自动同步-data2-1"><a href="#场景2：删除-data1-的文件，查看是否能够自动同步-data2-1" class="headerlink" title="场景2：删除 &#x2F;data1 的文件，查看是否能够自动同步 &#x2F;data2"></a><strong>场景2：删除 &#x2F;data1 的文件，查看是否能够自动同步 &#x2F;data2</strong></h3><p>在 &#x2F;data1 删除文件后，自动修正到 &#x2F;data2</p>
+<img src="/2021/01/22/rsync+notify%20%E5%AF%B9%E6%AF%94%20rclone/18.png" class="" title="18.png">
+
+<h4 id="场景3：配置定时同步计划，时间间隔-1-分钟。删除-data2-的文件，一分钟以后查看是否会自动同步。"><a href="#场景3：配置定时同步计划，时间间隔-1-分钟。删除-data2-的文件，一分钟以后查看是否会自动同步。" class="headerlink" title="场景3：配置定时同步计划，时间间隔 1 分钟。删除 &#x2F;data2 的文件，一分钟以后查看是否会自动同步。"></a><strong>场景3：配置定时同步计划，时间间隔 1 分钟。删除 &#x2F;data2 的文件，一分钟以后查看是否会自动同步。</strong></h4><p>已配置 crontab ，删除 &#x2F;data2 上的文件。等待 1 分钟左右，数据被重新同步。</p>
+<img src="/2021/01/22/rsync+notify%20%E5%AF%B9%E6%AF%94%20rclone/19.png" class="" title="19.png">
+
+
+
+<h2 id="rclone-sync-notify-的方式"><a href="#rclone-sync-notify-的方式" class="headerlink" title="rclone sync + notify 的方式"></a><strong>rclone sync + notify 的方式</strong></h2><p>a2b_rclone.sh 脚本内容：</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta prompt_">#</span><span class="language-bash">!/bin/bash</span></span><br><span class="line">/usr/local/bin/inotifywait -mrq -e modify,delete,create,attrib,move /data1|while read files</span><br><span class="line">do</span><br><span class="line">  rclone sync /data1 /data2</span><br><span class="line">done</span><br></pre></td></tr></table></figure>
+
+<h3 id="场景1：在-data1-创建文件，查看是否会同步到-data2"><a href="#场景1：在-data1-创建文件，查看是否会同步到-data2" class="headerlink" title="场景1：在 &#x2F;data1 创建文件，查看是否会同步到 &#x2F;data2"></a><strong>场景1：在 &#x2F;data1 创建文件，查看是否会同步到 &#x2F;data2</strong></h3><p>启动 rclone sync + notify 的脚本</p>
+<img src="/2021/01/22/rsync+notify%20%E5%AF%B9%E6%AF%94%20rclone/20.png" class="" title="20.png">
+
+<p>在 &#x2F;data1 上创建文件，查看 &#x2F;data2 是否会自动同步该数据</p>
+<img src="/2021/01/22/rsync+notify%20%E5%AF%B9%E6%AF%94%20rclone/21.png" class="" title="21.png">
+
+<h3 id="场景2：在-data1-删除文件，查看是否能够自动同步-data2"><a href="#场景2：在-data1-删除文件，查看是否能够自动同步-data2" class="headerlink" title="场景2：在 &#x2F;data1 删除文件，查看是否能够自动同步 &#x2F;data2"></a><strong>场景2：在</strong> <strong>&#x2F;data1 删除文件，查看是否能够自动同步 &#x2F;data2</strong></h3><p>在 &#x2F;data1 上创建 1.txt 文件 查看 &#x2F;data2 是否会自动同步该数据</p>
+<img src="/2021/01/22/rsync+notify%20%E5%AF%B9%E6%AF%94%20rclone/22.png" class="" title="22.png">
+
+<p>在 &#x2F;data1 上删除 aplusb_demo.tar.gz 文件，查看 &#x2F;data2 是否会自动删除该文件</p>
+<img src="/2021/01/22/rsync+notify%20%E5%AF%B9%E6%AF%94%20rclone/23.png" class="" title="23.png">
+]]></content>
+      <tags>
+        <tag>K8S</tag>
+        <tag>工具</tag>
+      </tags>
+  </entry>
 </search>
