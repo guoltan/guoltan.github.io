@@ -154,7 +154,7 @@
       </div>
       <div class="site-state-item site-state-tags">
           <a href="/tags/">
-        <span class="site-state-item-count">11</span>
+        <span class="site-state-item-count">12</span>
         <span class="site-state-item-name">标签</span></a>
       </div>
   </nav>
@@ -179,117 +179,6 @@
     </div>
 
     <div class="main-inner index posts-expand">
-
-    
-
-
-<div class="post-block">
-  
-  
-
-  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="">
-    <link itemprop="mainEntityOfPage" href="https://guoltan.github.io/2024/03/26/Kafka%20%E8%BF%90%E7%BB%B4%E6%8C%87%E4%BB%A4/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.gif">
-      <meta itemprop="name" content="guoltan">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="guoltan个人博客">
-      <meta itemprop="description" content="">
-    </span>
-
-    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
-      <meta itemprop="name" content="undefined | guoltan个人博客">
-      <meta itemprop="description" content="">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          <a href="/2024/03/26/Kafka%20%E8%BF%90%E7%BB%B4%E6%8C%87%E4%BB%A4/" class="post-title-link" itemprop="url">未命名</a>
-        </h2>
-
-        <div class="post-meta-container">
-          <div class="post-meta">
-    <span class="post-meta-item">
-      <span class="post-meta-item-icon">
-        <i class="far fa-calendar"></i>
-      </span>
-      <span class="post-meta-item-text">发表于</span>
-
-      <time title="创建时间：2024-03-26 11:23:30" itemprop="dateCreated datePublished" datetime="2024-03-26T11:23:30+08:00">2024-03-26</time>
-    </span>
-
-  
-    <span class="post-meta-item" title="本文字数">
-      <span class="post-meta-item-icon">
-        <i class="far fa-file-word"></i>
-      </span>
-      <span class="post-meta-item-text">本文字数：</span>
-      <span>2.3k</span>
-    </span>
-    <span class="post-meta-item" title="阅读时长">
-      <span class="post-meta-item-icon">
-        <i class="far fa-clock"></i>
-      </span>
-      <span class="post-meta-item-text">阅读时长 &asymp;</span>
-      <span>4 分钟</span>
-    </span>
-</div>
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-          <h1 id="概述"><a href="#概述" class="headerlink" title="概述"></a><strong>概述</strong></h1><p>  本文主要介绍一些 kafka 常见的操作指令。并指导如何在 TKE 的场景下，对 kafka 进行操作。</p>
-<h1 id="运维指令"><a href="#运维指令" class="headerlink" title="运维指令"></a><strong>运维指令</strong></h1><h2 id="Topic-类"><a href="#Topic-类" class="headerlink" title="Topic 类"></a><strong>Topic 类</strong></h2><h3 id="列出-topic"><a href="#列出-topic" class="headerlink" title="列出 topic"></a><strong>列出 topic</strong></h3><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sh /opt/kafka/bin/kafka-topics.sh --bootstrap-server kf1:9092,kf2:9092,kf3:9092 --list --exclude-internal --command-config /opt/kafka/config/consumer.properties</span><br></pre></td></tr></table></figure>
-
-<h3 id="查看-topic-详情"><a href="#查看-topic-详情" class="headerlink" title="查看 topic 详情"></a><strong>查看 topic 详情</strong></h3><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sh /opt/kafka/bin/kafka-topics.sh --bootstrap-server kf1:9092,kf2:9092,kf3:9092 --describe --topic topicname --command-config /opt/kafka/config/consumer.properties</span><br></pre></td></tr></table></figure>
-
-<h3 id="创建-topic"><a href="#创建-topic" class="headerlink" title="创建 topic"></a><strong>创建 topic</strong></h3><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sh /opt/kafka/bin/kafka-topics.sh --bootstrap-server kf1:9092,kf2:9092,kf3:9092 --create --topic topicname --command-config /opt/kafka/config/consumer.properties</span><br></pre></td></tr></table></figure>
-
-<h3 id="删除指定-topic"><a href="#删除指定-topic" class="headerlink" title="删除指定 topic"></a>删除指定 topic</h3><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sh /opt/kafka/bin/kafka-topics.sh --bootstrap-server kf1:9092,kf2:9092,kf3:9092 --delete --topic topicname --command-config /opt/kafka/config/consumer.properties</span><br></pre></td></tr></table></figure>
-
-<h2 id="Consumer-groups-类"><a href="#Consumer-groups-类" class="headerlink" title="Consumer groups 类"></a><strong>Consumer groups 类</strong></h2><h3 id="列出-consumer-groups"><a href="#列出-consumer-groups" class="headerlink" title="列出 consumer groups"></a><strong>列出 consumer groups</strong></h3><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sh /opt/kafka/bin/kafka-consumer-groups.sh --bootstrap-server kf1:9092,kf2:9092,kf3:9092 --list --command-config /opt/kafka/config/consumer.properties</span><br></pre></td></tr></table></figure>
-
-<h3 id="查看-consumer-group-详细信息"><a href="#查看-consumer-group-详细信息" class="headerlink" title="查看 consumer group 详细信息"></a><strong>查看 consumer group 详细信息</strong></h3><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sh /opt/kafka/bin/kafka-consumer-groups.sh --bootstrap-server kf1:9092,kf2:9092,kf3:9092 --describe --group groupname --command-config /opt/kafka/config/consumer.properties</span><br></pre></td></tr></table></figure>
-
-<h3 id="删除指定-consumer-group"><a href="#删除指定-consumer-group" class="headerlink" title="删除指定 consumer group"></a><strong>删除指定 consumer group</strong></h3><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sh /opt/kafka/bin/kafka-consumer-groups.sh --bootstrap-server kf1:9092,kf2:9092,kf3:9092  --delete --group groupname --command-config /opt/kafka/config/consumer.properties</span><br></pre></td></tr></table></figure>
-
-<h2 id="生产与消费类"><a href="#生产与消费类" class="headerlink" title="生产与消费类"></a><strong>生产与消费类</strong></h2><h3 id="生产"><a href="#生产" class="headerlink" title="生产"></a><strong>生产</strong></h3><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sh /opt/kafka/bin/kafka-console-producer.sh --broker-list kf1:9092,kf2:9092,kf3:9092 --topic topicname --producer.config /opt/kafka_2.12-2.2.1/config/producer.properties</span><br></pre></td></tr></table></figure>
-
-<h3 id="消费"><a href="#消费" class="headerlink" title="消费"></a><strong>消费</strong></h3><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sh /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server kf1:9092,kf2:9092,kf3:9092 --topic topicname --from-beginning --consumer.config /opt/kafka_2.12-2.2.1/config/consumer.properties</span><br></pre></td></tr></table></figure>
-
-<h2 id="查看kafka数据保存时间"><a href="#查看kafka数据保存时间" class="headerlink" title="查看kafka数据保存时间"></a><strong>查看kafka数据保存时间</strong></h2><p>查看topic数据清理策略：</p>
-<p><code>cat /opt/kafka/config/server.properties</code>  查看 <code>log.retention.hours</code> 参数，这个参数含义是kafka数据日志的保存时间，</p>
-<h2 id="重新消费topic全部数据"><a href="#重新消费topic全部数据" class="headerlink" title="重新消费topic全部数据"></a><strong>重新消费topic全部数据</strong></h2><p>场景：需要重新消费一个topic里面的数据</p>
-<p>消费者要从头开始消费某个topic的全量数据，需要满足2个条件（spring-kafka）：</p>
-<p>（1）使用一个全新的”group.id”（就是之前没有被任何消费者使用过）;</p>
-<p>（2）指定”auto.offset.reset”参数的值为earliest；</p>
-<p>修改 <code>/opt/kafka/config/consumer.properties</code> 里面的<code>group.id</code>和<code>auto.offset.reset</code></p>
-<p>把<a target="_blank" rel="noopener" href="http://group.id/"><u><span class="15">group.id</span></u></a>值改成一个新的值,<code>auto.offset.reset</code> 值改成 <code>earliest</code>;</p>
-<p>执行消费命令消费topic就可以重头开始消费数据</p>
-<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sh /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server kf1:9092,kf2:9092,kf3:9092 --topic topicname --from-beginning --consumer.config /opt/kafka_2.12-2.2.1/config/consumer.properties</span><br></pre></td></tr></table></figure>
-
-      
-    </div>
-
-    
-    
-    
-
-    <footer class="post-footer">
-        <div class="post-eof"></div>
-      
-    </footer>
-  </article>
-</div>
-
-
-
 
     
 
@@ -1539,6 +1428,134 @@
 <h2 id="3-示例：获取某个进程的-PID，该-PID-属于运行在容器环境"><a href="#3-示例：获取某个进程的-PID，该-PID-属于运行在容器环境" class="headerlink" title="3. 示例：获取某个进程的 PID，该 PID 属于运行在容器环境"></a>3. 示例：获取某个进程的 PID，该 PID 属于运行在容器环境</h2><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line">[root@master1 ~]# cat /proc/7644/cgroup</span><br><span class="line"></span><br><span class="line">11:cpuset:/kubepods/besteffort/podda498366ad0b5d5f487968aaa924c6ab/7f77d3c235e601df71a70530fee4677230a768bd4442d46bad27210f6e520edc</span><br><span class="line"></span><br><span class="line">10:perf_event:/kubepods/besteffort/podda498366ad0b5d5f487968aaa924c6ab/7f77d3c235e601df71a70530fee4677230a768bd4442d46bad27210f6e520edc</span><br><span class="line"></span><br><span class="line">9:memory:/kubepods/besteffort/podda498366ad0b5d5f487968aaa924c6ab/7f77d3c235e601df71a70530fee4677230a768bd4442d46bad27210f6e520edc</span><br><span class="line"></span><br><span class="line">8:hugetlb:/kubepods/besteffort/podda498366ad0b5d5f487968aaa924c6ab/7f77d3c235e601df71a70530fee4677230a768bd4442d46bad27210f6e520edc</span><br><span class="line"></span><br><span class="line">7:devices:/kubepods/besteffort/podda498366ad0b5d5f487968aaa924c6ab/7f77d3c235e601df71a70530fee4677230a768bd4442d46bad27210f6e520edc</span><br><span class="line"></span><br><span class="line">6:pids:/kubepods/besteffort/podda498366ad0b5d5f487968aaa924c6ab/7f77d3c235e601df71a70530fee4677230a768bd4442d46bad27210f6e520edc</span><br><span class="line"></span><br><span class="line">5:freezer:/kubepods/besteffort/podda498366ad0b5d5f487968aaa924c6ab/7f77d3c235e601df71a70530fee4677230a768bd4442d46bad27210f6e520edc</span><br><span class="line"></span><br><span class="line">4:net_prio,net_cls:/kubepods/besteffort/podda498366ad0b5d5f487968aaa924c6ab/7f77d3c235e601df71a70530fee4677230a768bd4442d46bad27210f6e520edc</span><br><span class="line"></span><br><span class="line">3:blkio:/kubepods/besteffort/podda498366ad0b5d5f487968aaa924c6ab/7f77d3c235e601df71a70530fee4677230a768bd4442d46bad27210f6e520edc</span><br><span class="line"></span><br><span class="line">2:cpuacct,cpu:/kubepods/besteffort/podda498366ad0b5d5f487968aaa924c6ab/7f77d3c235e601df71a70530fee4677230a768bd4442d46bad27210f6e520edc</span><br><span class="line"></span><br><span class="line">1:name=systemd:/kubepods/besteffort/podda498366ad0b5d5f487968aaa924c6ab/7f77d3c235e601df71a70530fee4677230a768bd4442d46bad27210f6e520edc</span><br></pre></td></tr></table></figure>
 
 <p>其中 podda498366ad0b5d5f487968aaa924c6ab 就是该进程所属的 pod，此时通过 docker ps -a | grep da4983 可以确认进程所属容器</p>
+
+      
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+        <div class="post-eof"></div>
+      
+    </footer>
+  </article>
+</div>
+
+
+
+
+    
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="">
+    <link itemprop="mainEntityOfPage" href="https://guoltan.github.io/2023/09/08/CNI%E5%85%A5%E9%97%A8%EF%BC%88%E4%B8%80%EF%BC%89%E6%A6%82%E8%BF%B0/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="guoltan">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="guoltan个人博客">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="undefined | guoltan个人博客">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          <a href="/2023/09/08/CNI%E5%85%A5%E9%97%A8%EF%BC%88%E4%B8%80%EF%BC%89%E6%A6%82%E8%BF%B0/" class="post-title-link" itemprop="url">CNI入门（一）概述</a>
+        </h2>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+
+      <time title="创建时间：2023-09-08 18:00:15" itemprop="dateCreated datePublished" datetime="2023-09-08T18:00:15+08:00">2023-09-08</time>
+    </span>
+
+  
+    <span class="post-meta-item" title="本文字数">
+      <span class="post-meta-item-icon">
+        <i class="far fa-file-word"></i>
+      </span>
+      <span class="post-meta-item-text">本文字数：</span>
+      <span>1.8k</span>
+    </span>
+    <span class="post-meta-item" title="阅读时长">
+      <span class="post-meta-item-icon">
+        <i class="far fa-clock"></i>
+      </span>
+      <span class="post-meta-item-text">阅读时长 &asymp;</span>
+      <span>3 分钟</span>
+    </span>
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+          <h1 id="认识-CNI"><a href="#认识-CNI" class="headerlink" title="认识 CNI"></a>认识 CNI</h1><p>CNI 是 Kubernetes 提供的一个规范，它全名叫做 Container Network Interface。我们可以基于 CNI 规范去开发网络插件，以解决 K8S 的 Pod 间通信问题。CNI 需要解决下面的几个问题：</p>
+<table>
+<thead>
+<tr>
+<th>CNI 需要解决的问题</th>
+<th>网络管理员的例子</th>
+<th>CNI 实现</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>容器接入网络，就意味着需要配置网卡，网卡怎么创建，怎么配置IP。</td>
+<td>服务器要新上架，接入网络，服务器需要网卡，网卡需要配置 IP，需要通过跳线将服务器接到交换机或其他网络设备上。</td>
+<td>需要为 Pod 创建网卡，并关联到对应 Pod 的命名空间（接跳线到交换机）。并配置好 IP。同时也支持删除网卡（拔跳线）。</td>
+</tr>
+<tr>
+<td>需要给容器配置 IP，也就是主机地址池的管理，IP 的释放和申请怎么做。</td>
+<td>同样，新上架服务器，那服务器的 IP 需要配置哪个，需要网络管理员通过一张表去对 IP 地址分配进行管理。避免产生冲突导致网络异常。</td>
+<td>需要管理 Pod 的 IP 地址，实现 IPAM（IP地址管理）的功能。让 Pod 创建&#x2F;销毁时能够正确的获取、释放 IP。</td>
+</tr>
+<tr>
+<td>容器间可能属于不同的 Pod，Pod 在同一台主机运行的场景下，需要怎么去打通这些 Pod</td>
+<td>服务器上到机柜以后，会连接机柜上的交换机（假设是 ToR），并配置上 IP，这时候服务器就可以和同一个子网下的 IP 通信了。</td>
+<td>打通同节点下不同 Pod 的网络，通过连接相同的 bridge，或者 IP 路由规则等方式来实现。</td>
+</tr>
+<tr>
+<td>容器属于不同 Pod，分散在各个节点上，通过什么方法去满足跨主机的通信？</td>
+<td>实际上服务器不仅需要和同网段的 IP 通信，也有可能和不同网段下的 IP 通信。此时服务器需要配置路由，知道非本网段的目标要通过哪个口出去，中间网络（交换机，汇聚&#x2F;核心交换机，其他网路设备等等）上面也配置了具体的路由，让它们能够处理通信流量。</td>
+<td>集群中每个节点应该配置不同的 Pod 地址段，避免 IP 冲突导致网络功能异常。每个节点都需要动态的了解到其他节点的 Pod 地址段，并配置相应的路由。跨节点连通可以依赖隧道，也可以基于路由实现。</td>
+</tr>
+<tr>
+<td>Pod 的访问对象可能是 Kubernetes 集群外部，怎么样才能让 Pod 访问这些外部系统？</td>
+<td>服务器可能不仅要和内部系统通信，也要访问到外部系统。此时就需要在 NAT 设备上（可以是出口路由器或防火墙，也可以是旁路的 NAT 设备）配置好 NAT 功能，让他们能够访问外部。</td>
+<td>需要在 Pod 所在的机器上配置 NAT 规则，让 Pod 可以访问外部网络。（非 Pod CIDR 地址段）</td>
+</tr>
+</tbody></table>
+<p>知道 CNI 是网络插件的规范，以及它能够解决的问题、解决问题需要实现的功能以后，我们需要了解 Kubernetes 是如何去使用 CNI 的，以及如何快速开发一个简单的 CNI。</p>
+<h1 id="Kubernetes-是如何调用到-CNI-来实现网络功能"><a href="#Kubernetes-是如何调用到-CNI-来实现网络功能" class="headerlink" title="Kubernetes 是如何调用到 CNI 来实现网络功能"></a>Kubernetes 是如何调用到 CNI 来实现网络功能</h1><p>上文提到了 CNI 的用途以及它实现的功能点。假设我们手里有一个开发完成的 CNI 插件名称叫做 my-cni，它已经实现了上文提到的几个功能，那我现在想将它部署到 Kubernetes 集群，此时需要怎么做？</p>
+<p>首先需要了解一下 Pod 是如何被创建出来的，大体流程如下：（待补充完善）</p>
+<p>其中有一个步骤是 kubelet 会调用 CNI，那 kubelet 是怎么去查找 CNI 的？关联的工作目录主要如下：</p>
+<ul>
+<li><p>&#x2F;etc&#x2F;cni&#x2F;net.d，这是 CNI 网络配置的默认目录，主要用于存储 CNI 配置文件，在该目录下创建 .conf 或者 .json 结尾的文件，并写入对应 CNI 的程序信息（CNI 名称，CNI 规范的版本，CNI 类型等等）。如果需要使用多 CNI，也可以直接创建 .conflist 结尾的文件，并配置多个 CNI 的信息。</p>
+</li>
+<li><p>&#x2F;opt&#x2F;cni&#x2F;bin，默认存储 CNI 程序的工作目录</p>
+<p>也就是说，如果我需要在 Kubernetes 集群中使用 my-cni 这个 CNI 插件的话，我需要集群中的每一个节点的 &#x2F;etc&#x2F;cni&#x2F;net.d 里面创建一个 CNI 配置文件，声明可用的 CNI 程序名称，版本等信息。并将 my-cni 拷贝到 &#x2F;opt&#x2F;cni&#x2F;bin 目录下。此时（补充学习）就可以加载到 CNI。</p>
+</li>
+</ul>
 
       
     </div>

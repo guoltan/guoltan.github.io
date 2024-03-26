@@ -2010,8 +2010,8 @@
       </tags>
   </entry>
   <entry>
-    <title></title>
-    <url>/2024/03/26/Kafka%20%E8%BF%90%E7%BB%B4%E6%8C%87%E4%BB%A4/</url>
+    <title>Kafka 运维指令</title>
+    <url>/2022/12/19/Kafka%20%E8%BF%90%E7%BB%B4%E6%8C%87%E4%BB%A4/</url>
     <content><![CDATA[<h1 id="概述"><a href="#概述" class="headerlink" title="概述"></a><strong>概述</strong></h1><p>  本文主要介绍一些 kafka 常见的操作指令。并指导如何在 TKE 的场景下，对 kafka 进行操作。</p>
 <h1 id="运维指令"><a href="#运维指令" class="headerlink" title="运维指令"></a><strong>运维指令</strong></h1><h2 id="Topic-类"><a href="#Topic-类" class="headerlink" title="Topic 类"></a><strong>Topic 类</strong></h2><h3 id="列出-topic"><a href="#列出-topic" class="headerlink" title="列出 topic"></a><strong>列出 topic</strong></h3><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">sh /opt/kafka/bin/kafka-topics.sh --bootstrap-server kf1:9092,kf2:9092,kf3:9092 --list --exclude-internal --command-config /opt/kafka/config/consumer.properties</span><br></pre></td></tr></table></figure>
 
@@ -2042,6 +2042,9 @@
 <p>执行消费命令消费topic就可以重头开始消费数据</p>
 <figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">sh /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server kf1:9092,kf2:9092,kf3:9092 --topic topicname --from-beginning --consumer.config /opt/kafka_2.12-2.2.1/config/consumer.properties</span><br></pre></td></tr></table></figure>
 ]]></content>
+      <tags>
+        <tag>Kafka</tag>
+      </tags>
   </entry>
   <entry>
     <title></title>
