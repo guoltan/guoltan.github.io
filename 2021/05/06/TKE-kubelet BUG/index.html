@@ -19,28 +19,28 @@
 
 <script class="next-config" data-name="main" type="application/json">{"hostname":"guoltan.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":false,"version":"8.19.1","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12},"copycode":{"enable":false,"style":null},"fold":{"enable":false,"height":500},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false}}</script><script src="/js/config.js"></script>
 
-    <meta name="description" content="go 安装wget https:&#x2F;&#x2F;dl.google.com&#x2F;go&#x2F;go1.21.6.linux-amd64.tar.gz tar xvf go1.21.6.linux-amd64.tar.gzmv go &#x2F;usr&#x2F;local&#x2F;goecho “PATH&#x3D;PATH:&#x2F;usr&#x2F;local&#x2F;go&#x2F;bin” &gt;&gt;">
+    <meta name="description" content="问题背景​    Kubernetes 集群中有一台节点状态变成了 NotReady，经过排查，发现 kubelet 日志中出现了大量的 use of closed network connection 错误提示，尝试重启 kubelet。重启节点状态恢复为 Ready。 ​    该问题后续也在其他环境上触发了，感觉上是共性问题。经过 github 搜寻，该问题属于 Kubernetes 的版本">
 <meta property="og:type" content="article">
-<meta property="og:title" content="kubernetes go开发环境安装">
-<meta property="og:url" content="https://guoltan.github.io/2024/01/26/go%E5%BC%80%E5%8F%91%E7%8E%AF%E5%A2%83%E7%8E%AF%E5%A2%83/index.html">
+<meta property="og:title" content="TKE kubelet BUG 导致节点频繁 NotReady">
+<meta property="og:url" content="https://guoltan.github.io/2021/05/06/TKE-kubelet%20BUG/index.html">
 <meta property="og:site_name" content="guoltan个人博客">
-<meta property="og:description" content="go 安装wget https:&#x2F;&#x2F;dl.google.com&#x2F;go&#x2F;go1.21.6.linux-amd64.tar.gz tar xvf go1.21.6.linux-amd64.tar.gzmv go &#x2F;usr&#x2F;local&#x2F;goecho “PATH&#x3D;PATH:&#x2F;usr&#x2F;local&#x2F;go&#x2F;bin” &gt;&gt;">
+<meta property="og:description" content="问题背景​    Kubernetes 集群中有一台节点状态变成了 NotReady，经过排查，发现 kubelet 日志中出现了大量的 use of closed network connection 错误提示，尝试重启 kubelet。重启节点状态恢复为 Ready。 ​    该问题后续也在其他环境上触发了，感觉上是共性问题。经过 github 搜寻，该问题属于 Kubernetes 的版本">
 <meta property="og:locale" content="zh_CN">
-<meta property="article:published_time" content="2024-01-26T12:11:25.000Z">
-<meta property="article:modified_time" content="2024-01-26T15:12:52.709Z">
+<meta property="article:published_time" content="2021-05-06T10:00:15.000Z">
+<meta property="article:modified_time" content="2024-03-26T02:07:25.542Z">
 <meta property="article:author" content="guoltan">
-<meta property="article:tag" content="go">
+<meta property="article:tag" content="K8S">
 <meta name="twitter:card" content="summary">
 
 
-<link rel="canonical" href="https://guoltan.github.io/2024/01/26/go%E5%BC%80%E5%8F%91%E7%8E%AF%E5%A2%83%E7%8E%AF%E5%A2%83/">
+<link rel="canonical" href="https://guoltan.github.io/2021/05/06/TKE-kubelet%20BUG/">
 
 
 
-<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://guoltan.github.io/2024/01/26/go%E5%BC%80%E5%8F%91%E7%8E%AF%E5%A2%83%E7%8E%AF%E5%A2%83/","path":"2024/01/26/go开发环境环境/","title":"kubernetes go开发环境安装"}</script>
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://guoltan.github.io/2021/05/06/TKE-kubelet%20BUG/","path":"2021/05/06/TKE-kubelet BUG/","title":"TKE kubelet BUG 导致节点频繁 NotReady"}</script>
 
 <script class="next-config" data-name="calendar" type="application/json">""</script>
-<title>kubernetes go开发环境安装 | guoltan个人博客</title>
+<title>TKE kubelet BUG 导致节点频繁 NotReady | guoltan个人博客</title>
   
 
 
@@ -140,7 +140,7 @@
       <div class="sidebar-panel-container">
         <!--noindex-->
         <div class="post-toc-wrap sidebar-panel">
-            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#go-%E5%AE%89%E8%A3%85"><span class="nav-number">1.</span> <span class="nav-text">go 安装</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BD%BF%E7%94%A8%E5%9B%BD%E5%86%85%E4%BB%A3%E7%90%86"><span class="nav-number">2.</span> <span class="nav-text">使用国内代理</span></a></li></ol></div>
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E9%97%AE%E9%A2%98%E8%83%8C%E6%99%AF"><span class="nav-number">1.</span> <span class="nav-text">问题背景</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%A4%84%E7%90%86%E6%96%B9%E6%B3%95"><span class="nav-number">2.</span> <span class="nav-text">处理方法</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%93%8D%E4%BD%9C%E5%AF%B9%E8%B1%A1"><span class="nav-number">2.1.</span> <span class="nav-text">操作对象</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%88%9B%E5%BB%BA-fix-%E8%84%9A%E6%9C%AC"><span class="nav-number">2.2.</span> <span class="nav-text">创建 fix 脚本</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%B0%86-fix-%E8%84%9A%E6%9C%AC%E6%B7%BB%E5%8A%A0%E5%88%B0%E5%AE%9A%E6%97%B6%E4%BB%BB%E5%8A%A1%E9%87%8C%E9%9D%A2"><span class="nav-number">2.3.</span> <span class="nav-text">将 fix 脚本添加到定时任务里面</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E9%99%84%E5%BD%95"><span class="nav-number">3.</span> <span class="nav-text">附录</span></a></li></ol></div>
         </div>
         <!--/noindex-->
 
@@ -194,7 +194,7 @@
   
 
   <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="https://guoltan.github.io/2024/01/26/go%E5%BC%80%E5%8F%91%E7%8E%AF%E5%A2%83%E7%8E%AF%E5%A2%83/">
+    <link itemprop="mainEntityOfPage" href="https://guoltan.github.io/2021/05/06/TKE-kubelet%20BUG/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
       <meta itemprop="image" content="/images/avatar.gif">
@@ -207,12 +207,12 @@
     </span>
 
     <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
-      <meta itemprop="name" content="kubernetes go开发环境安装 | guoltan个人博客">
+      <meta itemprop="name" content="TKE kubelet BUG 导致节点频繁 NotReady | guoltan个人博客">
       <meta itemprop="description" content="">
     </span>
       <header class="post-header">
         <h1 class="post-title" itemprop="name headline">
-          kubernetes go开发环境安装
+          TKE kubelet BUG 导致节点频繁 NotReady
         </h1>
 
         <div class="post-meta-container">
@@ -223,7 +223,7 @@
       </span>
       <span class="post-meta-item-text">发表于</span>
 
-      <time title="创建时间：2024-01-26 20:11:25" itemprop="dateCreated datePublished" datetime="2024-01-26T20:11:25+08:00">2024-01-26</time>
+      <time title="创建时间：2021-05-06 18:00:15" itemprop="dateCreated datePublished" datetime="2021-05-06T18:00:15+08:00">2021-05-06</time>
     </span>
 
   
@@ -239,14 +239,14 @@
         <i class="far fa-file-word"></i>
       </span>
       <span class="post-meta-item-text">本文字数：</span>
-      <span>337</span>
+      <span>1.3k</span>
     </span>
     <span class="post-meta-item" title="阅读时长">
       <span class="post-meta-item-icon">
         <i class="far fa-clock"></i>
       </span>
       <span class="post-meta-item-text">阅读时长 &asymp;</span>
-      <span>1 分钟</span>
+      <span>2 分钟</span>
     </span>
 </div>
 
@@ -256,9 +256,18 @@
     
     
     
-    <div class="post-body" itemprop="articleBody"><h2 id="go-安装"><a href="#go-安装" class="headerlink" title="go 安装"></a>go 安装</h2><p>wget <a target="_blank" rel="noopener" href="https://dl.google.com/go/go1.21.6.linux-amd64.tar.gz">https://dl.google.com/go/go1.21.6.linux-amd64.tar.gz</a> tar xvf go1.21.6.linux-amd64.tar.gz<br>mv go &#x2F;usr&#x2F;local&#x2F;go<br>echo “PATH&#x3D;PATH:&#x2F;usr&#x2F;local&#x2F;go&#x2F;bin” &gt;&gt; &#x2F;etc&#x2F;profile<br>source &#x2F;etc&#x2F;profile</p>
-<h2 id="使用国内代理"><a href="#使用国内代理" class="headerlink" title="使用国内代理"></a>使用国内代理</h2><p>go env -w GOPROXY&#x3D;<a target="_blank" rel="noopener" href="https://goproxy.cn,direct/">https://goproxy.cn,direct</a></p>
-<p>go env -w GO111MODULE&#x3D;auto</p>
+    <div class="post-body" itemprop="articleBody"><h1 id="问题背景"><a href="#问题背景" class="headerlink" title="问题背景"></a>问题背景</h1><p>​    Kubernetes 集群中有一台节点状态变成了 <code>NotReady</code>，经过排查，发现 <code>kubelet</code> 日志中出现了大量的 <code>use of closed network connection</code> 错误提示，尝试重启 <code>kubelet</code>。重启节点状态恢复为 <code>Ready</code>。</p>
+<p>​    该问题后续也在其他环境上触发了，感觉上是共性问题。经过 github 搜寻，该问题属于 Kubernetes 的版本 bug，目前没有根本上解决的方法，临时解决方式是采用定期检测脚本来规避这个问题，每5分钟检测一次 <code>kubelet</code> 的日志，确认它是否触发 <code>use of closed network connection</code> 的错误。如果有的话，就重启 <code>kubelet</code>。</p>
+<h1 id="处理方法"><a href="#处理方法" class="headerlink" title="处理方法"></a>处理方法</h1><h2 id="操作对象"><a href="#操作对象" class="headerlink" title="操作对象"></a>操作对象</h2><p>  以下操作需要在 K8S 集群中所有节点上执行</p>
+<h2 id="创建-fix-脚本"><a href="#创建-fix-脚本" class="headerlink" title="创建 fix 脚本"></a>创建 fix 脚本</h2><p>  在 &#x2F;var&#x2F;log 目录下创建 <code>kubelet-fixbug</code> 目录，在此目录下创建 <code>kubelet-fixbug.sh</code> 文件</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta prompt_">#</span><span class="language-bash">!/bin/bash</span></span><br><span class="line">function print_log() &#123;</span><br><span class="line">    log_level=$1</span><br><span class="line">    log_msg=$2</span><br><span class="line">    currentTime=$(echo $(date +%F%n%T))</span><br><span class="line">    echo &quot;$currentTime    [$log_level]   $log_msg&quot;</span><br><span class="line">&#125;</span><br><span class="line">output=$(journalctl -u kubelet -n 1 | grep &quot;use of closed network connection&quot;)</span><br><span class="line">if [[ $? != 0 ]]; then</span><br><span class="line">    print_log &quot;INFO&quot; &quot;Error not found in logs&quot;</span><br><span class="line">elif [[ $output ]]; then</span><br><span class="line">    print_log &quot;WARING&quot; &quot;Restart kubelet&quot;</span><br><span class="line">    systemctl restart kubelet</span><br><span class="line">fi</span><br></pre></td></tr></table></figure>
+
+<h2 id="将-fix-脚本添加到定时任务里面"><a href="#将-fix-脚本添加到定时任务里面" class="headerlink" title="将 fix 脚本添加到定时任务里面"></a>将 fix 脚本添加到定时任务里面</h2><p>  在 crontab 里添加如下任务</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta prompt_">#</span><span class="language-bash">fixbug: fix kubelet use of closed network connection</span></span><br><span class="line">*/5 * * * * sh /var/log/kubelet-fixbug/kubelet-fixbug.sh &gt;&gt; /var/log/kubelet-fixbug/fixbug.log 2&gt;&amp;1</span><br></pre></td></tr></table></figure>
+
+<p>&nbsp;</p>
+<p>配置了上述操作以后，每隔五分钟就会执行一次检测，如果发现 <code>kubelet</code> 触发了该问题，就会进行重启 <code>kubelet</code> 的操作。</p>
+<h1 id="附录"><a href="#附录" class="headerlink" title="附录"></a>附录</h1><p>github 上该 BUG 的问题链接：<a target="_blank" rel="noopener" href="https://github.com/kubernetes/kubernetes/issues/87615%EF%BC%89">https://github.com/kubernetes/kubernetes/issues/87615）</a></p>
 
     </div>
 
@@ -268,20 +277,20 @@
 
     <footer class="post-footer">
           <div class="post-tags">
-              <a href="/tags/go/" rel="tag"># go</a>
+              <a href="/tags/K8S/" rel="tag"># K8S</a>
           </div>
 
         
 
           <div class="post-nav">
             <div class="post-nav-item">
-                <a href="/2024/01/23/kubectl%20logs%20%E6%97%A5%E5%BF%97%E9%87%87%E9%9B%86%E5%B7%A5%E5%85%B7/" rel="prev" title="基于资源对应 pod 批量执行 kubectl logs 采集工具">
-                  <i class="fa fa-angle-left"></i> 基于资源对应 pod 批量执行 kubectl logs 采集工具
+                <a href="/2021/01/21/helm%E5%85%A5%E9%97%A8/" rel="prev" title="Helm入门">
+                  <i class="fa fa-angle-left"></i> Helm入门
                 </a>
             </div>
             <div class="post-nav-item">
-                <a href="/2024/01/31/%E8%BE%B9%E7%BC%98%E8%AE%A1%E7%AE%97%E6%9D%82%E8%AE%B0%E4%B8%80%EF%BC%9A%E6%A6%82%E5%BF%B5/" rel="next" title="边缘计算杂记一：概念">
-                  边缘计算杂记一：概念 <i class="fa fa-angle-right"></i>
+                <a href="/2021/09/08/Docker0%E5%AD%90%E7%BD%91%E5%86%B2%E7%AA%81%E5%AF%BC%E8%87%B4%E8%8A%82%E7%82%B9%E6%89%A9%E5%AE%B9%E5%A4%B1%E8%B4%A5/" rel="next" title="Docker0子网冲突导致节点扩容失败">
+                  Docker0子网冲突导致节点扩容失败 <i class="fa fa-angle-right"></i>
                 </a>
             </div>
           </div>

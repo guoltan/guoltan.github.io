@@ -148,7 +148,7 @@
   <nav class="site-state">
       <div class="site-state-item site-state-posts">
         <a href="/archives/">
-          <span class="site-state-item-count">24</span>
+          <span class="site-state-item-count">26</span>
           <span class="site-state-item-name">日志</span>
         </a>
       </div>
@@ -179,6 +179,202 @@
     </div>
 
     <div class="main-inner index posts-expand">
+
+    
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="">
+    <link itemprop="mainEntityOfPage" href="https://guoltan.github.io/2021/09/13/tkestack%E6%89%A9%E5%AE%B9%E8%8A%82%E7%82%B9%E5%A4%B1%E8%B4%A5%E6%8E%92%E6%9F%A5%E6%8C%87%E5%BC%95/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="guoltan">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="guoltan个人博客">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="undefined | guoltan个人博客">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          <a href="/2021/09/13/tkestack%E6%89%A9%E5%AE%B9%E8%8A%82%E7%82%B9%E5%A4%B1%E8%B4%A5%E6%8E%92%E6%9F%A5%E6%8C%87%E5%BC%95/" class="post-title-link" itemprop="url">tkestack扩容节点失败排查指引</a>
+        </h2>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+
+      <time title="创建时间：2021-09-13 18:36:15" itemprop="dateCreated datePublished" datetime="2021-09-13T18:36:15+08:00">2021-09-13</time>
+    </span>
+
+  
+    <span class="post-meta-item" title="本文字数">
+      <span class="post-meta-item-icon">
+        <i class="far fa-file-word"></i>
+      </span>
+      <span class="post-meta-item-text">本文字数：</span>
+      <span>3.6k</span>
+    </span>
+    <span class="post-meta-item" title="阅读时长">
+      <span class="post-meta-item-icon">
+        <i class="far fa-clock"></i>
+      </span>
+      <span class="post-meta-item-text">阅读时长 &asymp;</span>
+      <span>7 分钟</span>
+    </span>
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+          <h1 id="业务集群是如何创建的？"><a href="#业务集群是如何创建的？" class="headerlink" title="业务集群是如何创建的？"></a>业务集群是如何创建的？</h1><p>在我们可以在 <strong>控制台-平台管理-集群管理-集群</strong> 处，点击创建业务集群，输入业务集群的参数，来创建一个业务集群。</p>
+<p>在创建业务集群以后，在控制台上可以点击执行过程，查看创建业务集群有哪些步骤。我们也可以通过 kubectl describe cluster 集群名称，去查看某个集群在创建时经历了哪些阶段。</p>
+<p>创建业务集群的请求，实际上将会转发给 cpaas-system&#x2F;tke-platform-api 这个组件，它主要用于监听与校验请求 tke platform API 请求，为请求配置 API 对象。它将会校验用户在浏览器上提交的请求是否合法。</p>
+<p>tke-platform-controller 通过 tke-platform-api 监视平台 API 对象的状态，配置 TKE 平台，完成业务集群创建，节点扩容等工作。tke-platform-controller 检测到新的资源创建请求时（cluster或者 machines 资源），再通过资源信息 SSH 到指定的机器上，执行相应的初始化&#x2F;安装工作。</p>
+<p><strong>总结出调用链关系如下：</strong></p>
+<p>客户端 -&gt; Console UI -&gt; 将页面生成的 json 提交到接口 &#x2F;apis&#x2F;platform.tkestack.io&#x2F;v1&#x2F;clusters -&gt; 调用 ingress-controller，基于 ingress kubernetes 完成转发 -&gt; 转发给 apiserver -&gt; 对应扩展的 apiservice(v1.platform.tkestack.io) -&gt; 该扩展接口对应的是 cpaas-system&#x2F;tke-platform-api 组件，将请求转发 -&gt; 由 cpaas-system&#x2F;tke-platform-api 完成参数校验 -&gt; cpaas-system&#x2F;tke-platform-controller 完成集群配置工作 -&gt; 提交给 apiserver（创建 cluster、machine 资源） -&gt; tke-platform-controller 基于 cluster&#x2F;machine 资源的信息，通过 SSH 登录到相应节点，完成节点&#x2F;集群创建工作。 </p>
+<p><strong>从调用链关系来看，TKE 业务集群创建、节点工作至少要满足如下条件：</strong></p>
+<ul>
+<li>客户端需要能够访问 TKE 控制台</li>
+<li>TKE global 集群的状态运行正常，至少保证控制平面组件（apiserver、etcd）控制台组件、ingress-controller、tke-platform-api、tke-platform-controller 等组件能够正常运行</li>
+<li>tke-platform-controller 组件与待扩容的节点连通性正常。</li>
+</ul>
+<h1 id="业务集群-扩容节点失败的排查方法"><a href="#业务集群-扩容节点失败的排查方法" class="headerlink" title="业务集群&#x2F;扩容节点失败的排查方法"></a>业务集群&#x2F;扩容节点失败的排查方法</h1><h2 id="问题处理思路"><a href="#问题处理思路" class="headerlink" title="问题处理思路"></a>问题处理思路</h2><p>对于此类问题，处理思路如下：</p>
+<ul>
+<li>查看常见的节点扩容&#x2F;业务集群失败 case，查看是否命中问题场景。</li>
+<li>确保 global 集群当前状态运行正常，核心组件 Pod 状态运行正常。</li>
+<li>确保待创建业务集群节点&#x2F;扩容节点当前状态正常（磁盘、网络、IO、内存、CPU等）。</li>
+<li>根据 tke 创建业务集群&#x2F;扩容节点的调用链，定位日志。</li>
+<li>收集环境信息，提工单上升给 1.5线&#x2F;2线 同学协助处理。</li>
+</ul>
+<h2 id="常见的节点扩容-业务集群失败-case"><a href="#常见的节点扩容-业务集群失败-case" class="headerlink" title="常见的节点扩容&#x2F;业务集群失败 case"></a>常见的节点扩容&#x2F;业务集群失败 case</h2><table>
+<thead>
+<tr>
+<th>故障现象</th>
+<th>处理建议</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>在扩容&#x2F;创建时，通过 kubectl get pod -A 会观察到 Evicited 状态的 Pod</td>
+<td>清理无用的数据文件或者扩容</td>
+</tr>
+<tr>
+<td>EnsureDocker 步骤执行失败</td>
+<td>1. 需要确认是否手动安装过 Docker，尝试收集 docker 日志（journalctl -u docker &gt; docker.log) 2. 确认待扩容节点是否适用 172.17.0.0&#x2F;16 相关的网段，如果时的话，大概率是路由问题，需要通过临时添加静态路由规避 docker0 导致回程流量丢失的问题</td>
+</tr>
+<tr>
+<td>EnsureKubelet 步骤执行失败</td>
+<td>完整的清理掉节点配置，尝试重新扩容</td>
+</tr>
+<tr>
+<td>EnsureKubeconfig 步骤执行失败，通过后台查询，kube-ovn-cni 组件状态处于 CrashLoopBackOff 状态</td>
+<td>参考工单处理方法，如果无法解决，收集组件日志，反馈给后端同学定位。</td>
+</tr>
+<tr>
+<td>执行步骤经常出现 i&#x2F;o timeout 的现象</td>
+<td>建议测试 tke-platform-controller Pod 与待扩容节点间的连通性是否稳定</td>
+</tr>
+<tr>
+<td>在重新安装业务集群时，出现端口&#x2F;IP冲突问题</td>
+<td>手动清理冲突的端口，kube-ovn 会自动重建</td>
+</tr>
+<tr>
+<td>执行步骤 EnsureJoinPhaseKubeletStart 失败</td>
+<td>测试待扩容节点 curl apiserver 地址的连通性</td>
+</tr>
+</tbody></table>
+<h2 id="Phase-说明"><a href="#Phase-说明" class="headerlink" title="Phase 说明"></a>Phase 说明</h2><p>在创建业务集群&#x2F;扩容节点时分了很多个 phase，每个 phase 代表一个步骤。其中有几个 phase 在创建集群&#x2F;扩容节点中起到了非常重要的作用。接下来对这些 phase 的作用和执行失败的常见原因进行一个说明。</p>
+<table>
+<thead>
+<tr>
+<th>phase</th>
+<th>作用</th>
+<th>失败原因</th>
+<th>处理建议</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>EnsureCopyFiles</td>
+<td>拷贝配置文件</td>
+<td>可能是待扩容节点的 SSH 配置未支持 sftp 配置</td>
+<td>使用 one-deploy 完成节点初始化工作，或者检查待扩容节点的 sftp 配置是否已打开</td>
+</tr>
+<tr>
+<td>EnsureDocker</td>
+<td>安装 Docker 客户端</td>
+<td>安装 docker 失败或者待扩容节点使用了冲突的网段。</td>
+<td>收集 Docker 日志、排查待扩容节点网段是否为 172.17.x.x&#x2F;16</td>
+</tr>
+<tr>
+<td>EnsureKubelet</td>
+<td>安装 Kubelet</td>
+<td>可能是节点残留配置导致</td>
+<td>参考工单 <a target="_blank" rel="noopener" href="https://andon.cloud.tencent.com/ticket/detail/?id=6611025&sign=260f10fda48b6c2f7d335e2d4a28685f">6611025</a></td>
+</tr>
+<tr>
+<td>EnsureCNIPlugins</td>
+<td>安装 CNI 插件</td>
+<td>CNI 插件状态运行异常</td>
+<td>排查 CNI 组件的状态，通常是节点网卡名字不统一导致启动失败。</td>
+</tr>
+<tr>
+<td>EnsureJoinPhaseKubeletStart</td>
+<td>加入 kubernetes 集群</td>
+<td>待扩容节点连接控制平面 6443 端口异常</td>
+<td>测试待扩容节点与 集群控制平面之间的连通性</td>
+</tr>
+<tr>
+<td>EnsureNodeReady</td>
+<td>获取节点状态是否为 Ready</td>
+<td>节点状态 NotReady</td>
+<td>参考<a target="_blank" rel="noopener" href="https://gdc.lexiangla.com/teams/k100044/docs/842da35cae3511ebb4e66afd0c8a692a?company_from=gdc">《Kubernetes Node NotReady 排查思路与处理方法》</a></td>
+</tr>
+<tr>
+<td>EnsurePostInstallHook</td>
+<td>通过 check-job 校验安装完整度</td>
+<td>部分组件未正常运行</td>
+<td>通过 kubectl get pod -A 获取非正常状态的 Pod，逐个处理</td>
+</tr>
+</tbody></table>
+<h2 id="信息收集思路"><a href="#信息收集思路" class="headerlink" title="信息收集思路"></a>信息收集思路</h2><h3 id="测试节点间连通性"><a href="#测试节点间连通性" class="headerlink" title="测试节点间连通性"></a>测试节点间连通性</h3><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta prompt_"># </span><span class="language-bash">使用 tke-platform-controller 容器进行连通性测试</span></span><br><span class="line">kubectl exec -it -n cpaas-system tke-platform-controller-xxxx-xxxx sh</span><br><span class="line"><span class="meta prompt_"></span></span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">测试连通性方法，在每个 tke-platform-controller 副本上都需要进行测试</span></span><br><span class="line">nc -z -v 扩容节点地址/业务集群机器地址 22（默认 SSH 使用 22 端口）</span><br></pre></td></tr></table></figure>
+
+<h3 id="校验组件状态"><a href="#校验组件状态" class="headerlink" title="校验组件状态"></a>校验组件状态</h3><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta prompt_"># </span><span class="language-bash">global 集群操作</span></span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">获取组件状态</span></span><br><span class="line">kubectl get pod -A | grep -v unn</span><br><span class="line">kubectl get apprelease -A</span><br><span class="line"><span class="meta prompt_"></span></span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">业务集群节点、或者待扩容节点所在的集群上操作</span></span><br><span class="line">kubectl get pod -A | grep -v unn</span><br></pre></td></tr></table></figure>
+
+<h3 id="组件日志收集"><a href="#组件日志收集" class="headerlink" title="组件日志收集"></a>组件日志收集</h3><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta prompt_"># </span><span class="language-bash">apiserver</span> </span><br><span class="line">kubectl logs -n kube-system kube-apiserver-x.x.x.x &gt; kube-apiserver-x.x.x.x.log</span><br><span class="line"><span class="meta prompt_"></span></span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">etcd</span></span><br><span class="line">kubectl logs -n kube-system etcd-x.x.x.x &gt; etcd-x.x.x.x.log</span><br><span class="line"><span class="meta prompt_"></span></span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">tke-platform-api</span></span><br><span class="line">kubectl logs -n kube-system tke-platform-api-xxxx-xxxx &gt; tke-platform-api-xxxx-xxxx.log</span><br><span class="line"><span class="meta prompt_"></span></span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">tke-platform-controller</span></span><br><span class="line">kubectl logs -n kube-system tke-platform-controller-xxxx-xxxx &gt; tke-platform-controller-xxxx-xxxx.log</span><br><span class="line"><span class="meta prompt_"></span></span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">如果需要将日志发送到后端，建议先进行压缩，这样能减少传输文件的大小。</span></span><br><span class="line">tar zcvf tke-log.tar.gz 日志目录</span><br></pre></td></tr></table></figure>
+
+      
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+        <div class="post-eof"></div>
+      
+    </footer>
+  </article>
+</div>
+
+
+
 
     
 
@@ -262,6 +458,100 @@
 <h3 id="tke-platform-controller-节点使用-172-17-0-0-16-网段的规避方法"><a href="#tke-platform-controller-节点使用-172-17-0-0-16-网段的规避方法" class="headerlink" title="tke-platform-controller 节点使用 172.17.0.0&#x2F;16 网段的规避方法"></a>tke-platform-controller 节点使用 172.17.0.0&#x2F;16 网段的规避方法</h3><h4 id="方案一：通过静态路由规避"><a href="#方案一：通过静态路由规避" class="headerlink" title="方案一：通过静态路由规避"></a>方案一：通过静态路由规避</h4><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta prompt_"># </span><span class="language-bash">在待扩容节点上，添加静态路由</span></span><br><span class="line">route add -net 172.17.1.0/24 gw 172.21.2.1</span><br><span class="line"><span class="meta prompt_"></span></span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">待扩容工作完成以后，修改新扩容节点的 /etc/docker/daemon.json 配置，添加 bip，修改 docker0 的地址段，注意该网段不能和客户环境其他子网地址重复。</span></span><br><span class="line">vim /etc/dockder/daemon.json</span><br><span class="line">&#123;</span><br><span class="line">    ....</span><br><span class="line">    &quot;bip&quot;:&quot;192.168.1.0/24&quot;,   # 增加 bip 配置</span><br><span class="line">    ....</span><br><span class="line">&#125;</span><br><span class="line"><span class="meta prompt_"></span></span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">删除临时添加的静态路由</span></span><br><span class="line">route del -net 172.17.1.0/24 gw 172.21.2.1</span><br></pre></td></tr></table></figure>
 
 <h4 id="方案二：将-tke-platform-controller-迁移到非-172-17-0-0-16-地址段的机器上"><a href="#方案二：将-tke-platform-controller-迁移到非-172-17-0-0-16-地址段的机器上" class="headerlink" title="方案二：将 tke-platform-controller 迁移到非 172.17.0.0&#x2F;16 地址段的机器上"></a>方案二：将 tke-platform-controller 迁移到非 172.17.0.0&#x2F;16 地址段的机器上</h4><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta prompt_"># </span><span class="language-bash">在 tke-platform-controller、tke-platform-api 的 deployment 中增加如下配置</span></span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">位于 spec.template.spec 字段下</span></span><br><span class="line">nodeSelector:</span><br><span class="line">  key: value  #自定义</span><br><span class="line"></span><br><span class="line">注意，在迁移过程中，tke 的集群、机器扩容功能会暂时不可用。通常情况下我们应该尽量在交付初期确认清楚该问题。避免后续运维的扩容阶段引入风险。</span><br></pre></td></tr></table></figure>
+
+      
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+        <div class="post-eof"></div>
+      
+    </footer>
+  </article>
+</div>
+
+
+
+
+    
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="">
+    <link itemprop="mainEntityOfPage" href="https://guoltan.github.io/2021/05/06/TKE-kubelet%20BUG/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="guoltan">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="guoltan个人博客">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="undefined | guoltan个人博客">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          <a href="/2021/05/06/TKE-kubelet%20BUG/" class="post-title-link" itemprop="url">TKE kubelet BUG 导致节点频繁 NotReady</a>
+        </h2>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+
+      <time title="创建时间：2021-05-06 18:00:15" itemprop="dateCreated datePublished" datetime="2021-05-06T18:00:15+08:00">2021-05-06</time>
+    </span>
+
+  
+    <span class="post-meta-item" title="本文字数">
+      <span class="post-meta-item-icon">
+        <i class="far fa-file-word"></i>
+      </span>
+      <span class="post-meta-item-text">本文字数：</span>
+      <span>1.3k</span>
+    </span>
+    <span class="post-meta-item" title="阅读时长">
+      <span class="post-meta-item-icon">
+        <i class="far fa-clock"></i>
+      </span>
+      <span class="post-meta-item-text">阅读时长 &asymp;</span>
+      <span>2 分钟</span>
+    </span>
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+          <h1 id="问题背景"><a href="#问题背景" class="headerlink" title="问题背景"></a>问题背景</h1><p>​    Kubernetes 集群中有一台节点状态变成了 <code>NotReady</code>，经过排查，发现 <code>kubelet</code> 日志中出现了大量的 <code>use of closed network connection</code> 错误提示，尝试重启 <code>kubelet</code>。重启节点状态恢复为 <code>Ready</code>。</p>
+<p>​    该问题后续也在其他环境上触发了，感觉上是共性问题。经过 github 搜寻，该问题属于 Kubernetes 的版本 bug，目前没有根本上解决的方法，临时解决方式是采用定期检测脚本来规避这个问题，每5分钟检测一次 <code>kubelet</code> 的日志，确认它是否触发 <code>use of closed network connection</code> 的错误。如果有的话，就重启 <code>kubelet</code>。</p>
+<h1 id="处理方法"><a href="#处理方法" class="headerlink" title="处理方法"></a>处理方法</h1><h2 id="操作对象"><a href="#操作对象" class="headerlink" title="操作对象"></a>操作对象</h2><p>  以下操作需要在 K8S 集群中所有节点上执行</p>
+<h2 id="创建-fix-脚本"><a href="#创建-fix-脚本" class="headerlink" title="创建 fix 脚本"></a>创建 fix 脚本</h2><p>  在 &#x2F;var&#x2F;log 目录下创建 <code>kubelet-fixbug</code> 目录，在此目录下创建 <code>kubelet-fixbug.sh</code> 文件</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta prompt_">#</span><span class="language-bash">!/bin/bash</span></span><br><span class="line">function print_log() &#123;</span><br><span class="line">    log_level=$1</span><br><span class="line">    log_msg=$2</span><br><span class="line">    currentTime=$(echo $(date +%F%n%T))</span><br><span class="line">    echo &quot;$currentTime    [$log_level]   $log_msg&quot;</span><br><span class="line">&#125;</span><br><span class="line">output=$(journalctl -u kubelet -n 1 | grep &quot;use of closed network connection&quot;)</span><br><span class="line">if [[ $? != 0 ]]; then</span><br><span class="line">    print_log &quot;INFO&quot; &quot;Error not found in logs&quot;</span><br><span class="line">elif [[ $output ]]; then</span><br><span class="line">    print_log &quot;WARING&quot; &quot;Restart kubelet&quot;</span><br><span class="line">    systemctl restart kubelet</span><br><span class="line">fi</span><br></pre></td></tr></table></figure>
+
+<h2 id="将-fix-脚本添加到定时任务里面"><a href="#将-fix-脚本添加到定时任务里面" class="headerlink" title="将 fix 脚本添加到定时任务里面"></a>将 fix 脚本添加到定时任务里面</h2><p>  在 crontab 里添加如下任务</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta prompt_">#</span><span class="language-bash">fixbug: fix kubelet use of closed network connection</span></span><br><span class="line">*/5 * * * * sh /var/log/kubelet-fixbug/kubelet-fixbug.sh &gt;&gt; /var/log/kubelet-fixbug/fixbug.log 2&gt;&amp;1</span><br></pre></td></tr></table></figure>
+
+<p>&nbsp;</p>
+<p>配置了上述操作以后，每隔五分钟就会执行一次检测，如果发现 <code>kubelet</code> 触发了该问题，就会进行重启 <code>kubelet</code> 的操作。</p>
+<h1 id="附录"><a href="#附录" class="headerlink" title="附录"></a>附录</h1><p>github 上该 BUG 的问题链接：<a target="_blank" rel="noopener" href="https://github.com/kubernetes/kubernetes/issues/87615%EF%BC%89">https://github.com/kubernetes/kubernetes/issues/87615）</a></p>
 
       
     </div>

@@ -148,7 +148,7 @@
   <nav class="site-state">
       <div class="site-state-item site-state-posts">
         <a href="/archives/">
-          <span class="site-state-item-count">24</span>
+          <span class="site-state-item-count">26</span>
           <span class="site-state-item-name">日志</span>
         </a>
       </div>
@@ -1337,7 +1337,7 @@
     
     
     <div class="post-body" itemprop="articleBody">
-          <h1 id="1-认识-CNI"><a href="#1-认识-CNI" class="headerlink" title="1. 认识 CNI"></a>1. 认识 CNI</h1><p>CNI 是 Kubernetes 提供的一个规范，它全名叫做 Container Network Interface。我们可以基于 CNI 规范去开发网络插件，以解决 K8S 的 Pod 间通信问题。CNI 需要解决下面的几个问题：</p>
+          <h1 id="认识-CNI"><a href="#认识-CNI" class="headerlink" title="认识 CNI"></a>认识 CNI</h1><p>CNI 是 Kubernetes 提供的一个规范，它全名叫做 Container Network Interface。我们可以基于 CNI 规范去开发网络插件，以解决 K8S 的 Pod 间通信问题。CNI 需要解决下面的几个问题：</p>
 <table>
 <thead>
 <tr>
@@ -1373,7 +1373,7 @@
 </tr>
 </tbody></table>
 <p>知道 CNI 是网络插件的规范，以及它能够解决的问题、解决问题需要实现的功能以后，我们需要了解 Kubernetes 是如何去使用 CNI 的，以及如何快速开发一个简单的 CNI。</p>
-<h1 id="2-Kubernetes-是如何调用到-CNI-来实现网络功能"><a href="#2-Kubernetes-是如何调用到-CNI-来实现网络功能" class="headerlink" title="2. Kubernetes 是如何调用到 CNI 来实现网络功能"></a>2. Kubernetes 是如何调用到 CNI 来实现网络功能</h1><p>上文提到了 CNI 的用途以及它实现的功能点。假设我们手里有一个开发完成的 CNI 插件名称叫做 my-cni，它已经实现了上文提到的几个功能，那我现在想将它部署到 Kubernetes 集群，此时需要怎么做？</p>
+<h1 id="Kubernetes-是如何调用到-CNI-来实现网络功能"><a href="#Kubernetes-是如何调用到-CNI-来实现网络功能" class="headerlink" title="Kubernetes 是如何调用到 CNI 来实现网络功能"></a>Kubernetes 是如何调用到 CNI 来实现网络功能</h1><p>上文提到了 CNI 的用途以及它实现的功能点。假设我们手里有一个开发完成的 CNI 插件名称叫做 my-cni，它已经实现了上文提到的几个功能，那我现在想将它部署到 Kubernetes 集群，此时需要怎么做？</p>
 <p>首先需要了解一下 Pod 是如何被创建出来的，大体流程如下：（待补充完善）</p>
 <p>其中有一个步骤是 kubelet 会调用 CNI，那 kubelet 是怎么去查找 CNI 的？关联的工作目录主要如下：</p>
 <ul>

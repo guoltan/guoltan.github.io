@@ -148,7 +148,7 @@
   <nav class="site-state">
       <div class="site-state-item site-state-posts">
         <a href="/archives/">
-          <span class="site-state-item-count">24</span>
+          <span class="site-state-item-count">26</span>
           <span class="site-state-item-name">日志</span>
         </a>
       </div>
@@ -282,6 +282,123 @@
 
 <p>参考链接：</p>
 <p><a target="_blank" rel="noopener" href="https://github.com/moby/buildkit/blob/master/docs/buildkitd.toml.md">https://github.com/moby/buildkit/blob/master/docs/buildkitd.toml.md</a></p>
+
+      
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+        <div class="post-eof"></div>
+      
+    </footer>
+  </article>
+</div>
+
+
+
+
+    
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="">
+    <link itemprop="mainEntityOfPage" href="https://guoltan.github.io/2023/04/23/volcano%E8%B0%83%E5%BA%A6%E8%B0%83%E4%BC%98/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="guoltan">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="guoltan个人博客">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="undefined | guoltan个人博客">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          <a href="/2023/04/23/volcano%E8%B0%83%E5%BA%A6%E8%B0%83%E4%BC%98/" class="post-title-link" itemprop="url">volcano调度调优</a>
+        </h2>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+
+      <time title="创建时间：2023-04-23 20:01:15" itemprop="dateCreated datePublished" datetime="2023-04-23T20:01:15+08:00">2023-04-23</time>
+    </span>
+
+  
+    <span class="post-meta-item" title="本文字数">
+      <span class="post-meta-item-icon">
+        <i class="far fa-file-word"></i>
+      </span>
+      <span class="post-meta-item-text">本文字数：</span>
+      <span>25k</span>
+    </span>
+    <span class="post-meta-item" title="阅读时长">
+      <span class="post-meta-item-icon">
+        <i class="far fa-clock"></i>
+      </span>
+      <span class="post-meta-item-text">阅读时长 &asymp;</span>
+      <span>46 分钟</span>
+    </span>
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+          <h1 id="背景"><a href="#背景" class="headerlink" title="背景"></a><strong>背景</strong></h1><p>  某客户反馈 AI 平台中有某几个节点的负载很高，业务都调度到这些机器上了，会出现因为负载高导致 hang 死的问题。但是同时 AI 平台中还存在很多空闲节点，这些节点上没有运行业务 Pod，希望确认原因。</p>
+<p>  而目前 AI 平台使用的是 volcano 作为调度器，现在 AI 平台在调度业务 Pod（训练、推理、notebook等等）上，是通过 binpack 算法尽量先把已有节点填满，再去分发业务到新的计算节点。这样做的目的是尽量减少资源碎片，有效的提升节点资源的利用率。由于 binpack 这种形式是先填满已有节点，所以当平台环境初期业务量不多的时候，就会出现客户反馈的问题，集群中个别几个业务量很大，其他节点则没有运行业务 Pod（存在空闲节点）的现象。</p>
+<p>  而节点出现因为负载高导致 hang 死的问题是因为 volcano 默认给节点预留的资源较少（2U4G）。而客户发放的业务规格有大有小，通过 binpack 的方式集中调度后，导致机器的资源利用率压榨的比较极限，机器有出现部分 limits 超出的情况（下图的内容是仅计入 K8S Pod 的数据。有部分系统进程也需要使用 CPU、内存资源，未计入）当业务 Pod 同时在运行，并且资源使用率较高时，节点负载就会很高，可能出现 hang 死的问题。</p>
+<img src="/2023/04/23/volcano%E8%B0%83%E5%BA%A6%E8%B0%83%E4%BC%98/1.png" class="" title="1.png">
+
+<h1 id="解决思路"><a href="#解决思路" class="headerlink" title="解决思路"></a><strong>解决思路</strong></h1><p>对于上述的问题，目前有两种解决的思路，解决方法如下：</p>
+<p>· 方案一：提升资源预留份额，通过修改 volcano 调度器的配置，提升节点资源预留的份额，这样能一定程度上避免节点业务运行过多，导致 hang 死的问题。修改以后由于还在使用 binpack 算法，初期集群中还是会出现空闲节点的现象。但随着整个集群业务的增加，空闲节点会逐渐减少。并且使用了 binpack 算法，最终能保证节点的资源高利用率。</p>
+<p>· 方案二：去除 binpack 调度算法，通过修改 volcano 调度器的配置，去掉 binpack 算法。这样 Pod 就会打散在各个节点上，减少空闲节点的产生。对于环境初期来说，客户侧就能看到各个节点上能运行业务。但由于不使用 binpack 调度算法，环境后期可能会出现资源碎片较多的问题。</p>
+<h1 id="操作步骤"><a href="#操作步骤" class="headerlink" title="操作步骤"></a><strong>操作步骤</strong></h1><h2 id="方案一：修改-reserveresource-中预留的资源数量"><a href="#方案一：修改-reserveresource-中预留的资源数量" class="headerlink" title="方案一：修改 reserveresource 中预留的资源数量"></a><strong>方案一：修改 reserveresource 中预留的资源数量</strong></h2><h3 id="配置修改"><a href="#配置修改" class="headerlink" title="配置修改"></a><strong>配置修改</strong></h3><h4 id="修改-volcano-scheduler-configmap-中的-reserveresource"><a href="#修改-volcano-scheduler-configmap-中的-reserveresource" class="headerlink" title="修改 volcano-scheduler-configmap 中的 reserveresource"></a><strong>修改 volcano-scheduler-configmap 中的 reserveresource</strong></h4><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line">kubectl edit cm -n ti-inf volcano-scheduler-configmap</span><br><span class="line"></span><br><span class="line">-----------修改前-------------</span><br><span class="line">apiVersion: v1</span><br><span class="line">data:</span><br><span class="line">  volcano-scheduler.conf: |</span><br><span class="line">    actions: &quot;enqueue, reserve, allocate, backfill, preempt&quot;</span><br><span class="line">    tiers:</span><br><span class="line">    - plugins:</span><br><span class="line">      - name: reserveresource    # reserveresource 的 plugins</span><br><span class="line">        arguments:</span><br><span class="line">          reserve.cpu: 2         # 根据现场环境调整保留的 CPU 资源，默认是 2C。</span><br><span class="line">          reserve.memory: 4Gi    # 根据现场环境调整保留的 CPU 资源，默认是 4G。</span><br><span class="line"></span><br><span class="line">-----------修改后-------------</span><br><span class="line">apiVersion: v1</span><br><span class="line">data:</span><br><span class="line">  volcano-scheduler.conf: |</span><br><span class="line">    actions: &quot;enqueue, reserve, allocate, backfill, preempt&quot;</span><br><span class="line">    tiers:</span><br><span class="line">    - plugins:</span><br><span class="line">      - name: reserveresource    # reserveresource 的 plugins</span><br><span class="line">        arguments:</span><br><span class="line">          reserve.cpu: 4         # 根据现场环境调整保留的 CPU 资源，默认是 2C，本文此处修改为 4C。</span><br><span class="line">          reserve.memory: 8Gi    # 根据现场环境调整保留的 CPU 资源，默认是 4G，本文此处修改为 8G。</span><br></pre></td></tr></table></figure>
+
+<h4 id="修改完成-configmap-以后，执行如下指令重启-volcano-scheduler"><a href="#修改完成-configmap-以后，执行如下指令重启-volcano-scheduler" class="headerlink" title="修改完成 configmap 以后，执行如下指令重启 volcano-scheduler"></a><strong>修改完成 configmap 以后，执行如下指令重启 volcano-scheduler</strong></h4><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">kubectl delete pod -n ti-inf volcano-scheduler-xxxx</span><br></pre></td></tr></table></figure>
+
+<p> 注：输入 volcano-scheduler- 以后，按 tab 可以补全获取 Pod名称。</p>
+<h2 id="方案二：去除-binpack-调度算法"><a href="#方案二：去除-binpack-调度算法" class="headerlink" title="方案二：去除 binpack 调度算法"></a><strong>方案二：去除 binpack 调度算法</strong></h2><h3 id="配置修改-1"><a href="#配置修改-1" class="headerlink" title="配置修改"></a><strong>配置修改</strong></h3><h4 id="修改-volcano-scheduler-configmap，删除-binpack-算法"><a href="#修改-volcano-scheduler-configmap，删除-binpack-算法" class="headerlink" title="修改 volcano-scheduler-configmap，删除 binpack 算法"></a><strong>修改 volcano-scheduler-configmap，删除 binpack 算法</strong></h4><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br></pre></td><td class="code"><pre><span class="line">kubectl edit cm -n ti-inf volcano-scheduler-configmap</span><br><span class="line"></span><br><span class="line">-----------修改前-------------</span><br><span class="line">data:</span><br><span class="line">  volcano-scheduler.conf: |</span><br><span class="line">    actions: &quot;enqueue, reserve, allocate, backfill, preempt&quot;</span><br><span class="line">    tiers:</span><br><span class="line">    - plugins:</span><br><span class="line">      - name: reserveresource</span><br><span class="line">        arguments:</span><br><span class="line">          reserve.cpu: 2</span><br><span class="line">          reserve.memory: 4Gi</span><br><span class="line">    - plugins:</span><br><span class="line">      - name: priority</span><br><span class="line">      - name: gang</span><br><span class="line">      - name: conformance</span><br><span class="line">    - plugins:</span><br><span class="line">      - name: predicates</span><br><span class="line">      - name: nodeorder</span><br><span class="line">        arguments:</span><br><span class="line">          nodeaffinity.weight: 20</span><br><span class="line">          podaffinity.weight: 20</span><br><span class="line">          bizaffinity.weight: 20</span><br><span class="line">          resourcefit.weight: 1</span><br><span class="line">          leastrequested.weight: 0</span><br><span class="line">          balancedresource.weight: 1</span><br><span class="line">          imagelocality.weight: 1</span><br><span class="line">          similaraffinity.weight: 1</span><br><span class="line">      - name: preemptnodeorder</span><br><span class="line">      - name: binpack                            # 需要将 name: binpack 这个元素完全删除。</span><br><span class="line">        arguments:</span><br><span class="line">          binpack.weight: 10</span><br><span class="line">          binpack.cpu: 1</span><br><span class="line">          binpack.memory: 1</span><br><span class="line">          binpack.resources: nvidia.com/gpu,tencent.com/vcuda-core</span><br><span class="line">          binpack.resources.nvidia.com/gpu: 5</span><br><span class="line">          binpack.resources.tencent.com/vcuda-core: 5</span><br><span class="line"></span><br><span class="line">-----------修改后-------------</span><br><span class="line">data:</span><br><span class="line">  volcano-scheduler.conf: |</span><br><span class="line">    actions: &quot;enqueue, reserve, allocate, backfill, preempt&quot;</span><br><span class="line">    tiers:</span><br><span class="line">    - plugins:</span><br><span class="line">      - name: reserveresource</span><br><span class="line">        arguments:</span><br><span class="line">          reserve.cpu: 2</span><br><span class="line">          reserve.memory: 4Gi</span><br><span class="line">    - plugins:</span><br><span class="line">      - name: priority</span><br><span class="line">      - name: gang</span><br><span class="line">      - name: conformance</span><br><span class="line">    - plugins:</span><br><span class="line">      - name: predicates</span><br><span class="line">      - name: nodeorder</span><br><span class="line">        arguments:</span><br><span class="line">          nodeaffinity.weight: 20</span><br><span class="line">          podaffinity.weight: 20</span><br><span class="line">          bizaffinity.weight: 20</span><br><span class="line">          resourcefit.weight: 1</span><br><span class="line">          leastrequested.weight: 0</span><br><span class="line">          balancedresource.weight: 1</span><br><span class="line">          imagelocality.weight: 1</span><br><span class="line">          similaraffinity.weight: 1</span><br><span class="line">      - name: preemptnodeorder</span><br></pre></td></tr></table></figure>
+
+<h4 id="修改完成-configmap-以后，执行如下指令重启-volcano-scheduler-1"><a href="#修改完成-configmap-以后，执行如下指令重启-volcano-scheduler-1" class="headerlink" title="修改完成 configmap 以后，执行如下指令重启 volcano-scheduler"></a><strong>修改完成 configmap 以后，执行如下指令重启 volcano-scheduler</strong></h4><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">kubectl delete pod -n ti-inf volcano-scheduler-xxxx</span><br></pre></td></tr></table></figure>
+
+<p>注：输入 volcano-scheduler- 以后，按 tab 可以补全获取 Pod名称。</p>
+<h3 id="效果测试"><a href="#效果测试" class="headerlink" title="效果测试"></a><strong>效果测试</strong></h3><p>  验证 binpack 是否被去除，可以通过下发新的业务 Pod，然后查看 volcano-scheduler 日志判断 binpack 的算法是否已去除。另外 binpack 是集中调度，会尽量往已有业务的节点上调度，也可以通过创建多个业务 Pod。查看 Pod 是否分散到不同的节点上来确认是否生效。</p>
+<h4 id="通过日志去验证是否去除-binpack"><a href="#通过日志去验证是否去除-binpack" class="headerlink" title="通过日志去验证是否去除 binpack"></a><strong>通过日志去验证是否去除 binpack</strong></h4><p>在控制台 notebook 中，创建一个 1C1G 的示例，查看 volcano-scheduler 日志里面的执行步骤是否还存在 binpack 的算法。</p>
+<p>获取 notebook 的 Pod 名称</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">[root@tke01 ~]# kubectl get pod -n project-1  -o wide | grep notebook</span><br><span class="line">notebook-788644f3-f7f1-4611-951e-6c5807bc7934-78465f59cf-5qxql    2/2     Running   0          78s     10.199.10.169   192.168.0.88   &lt;none&gt;           &lt;none&gt;</span><br><span class="line">notebook-84e3ebf6-564e-42d8-aa7a-7c7d4c6ab1f6-6f76d587f9-mn87r    2/2     Running   0          4d3h    10.199.3.15     192.168.0.88   &lt;none&gt;           &lt;none&gt;</span><br></pre></td></tr></table></figure>
+
+<p>查看创建 1C1G notebook 示例的调度日志（注：此处日志级已修改为 level 4，关注的关键字是 notebook 名称，以及调度时是否有出现 binpack.go 的字样）</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br></pre></td><td class="code"><pre><span class="line">I1217 07:57:01.750134       1 scheduler.go:91] Start scheduling ...</span><br><span class="line"></span><br><span class="line">I1217 07:57:01.751435       1 cache.go:823] There are &lt;147&gt; Jobs, &lt;1&gt; Queues and &lt;4&gt; Nodes in total for scheduling.</span><br><span class="line"></span><br><span class="line">I1217 07:57:01.751538       1 session.go:157] Open Session fd36a727-80af-4ec2-94a6-1ddf1ea1f9c0 with &lt;4&gt; Node, &lt;147&gt; Job and &lt;1&gt; Queues</span><br><span class="line"></span><br><span class="line">I1217 07:57:01.770238       1 enqueue.go:57] Enter Enqueue ...</span><br><span class="line"></span><br><span class="line">I1217 07:57:01.770259       1 enqueue.go:75] Added Queue &lt;default&gt; for Job &lt;tione/podgroup-b884bf44-30f4-42fe-9d35-cae336b15bda&gt;</span><br><span class="line"></span><br><span class="line">I1217 07:57:01.770292       1 enqueue.go:86] Added Job &lt;project-1/podgroup-30488abb-93ee-4d3b-9392-5aec5d43a39e&gt; into Queue &lt;default&gt;</span><br><span class="line"></span><br><span class="line">I1217 07:57:01.770321       1 enqueue.go:91] Try to enqueue PodGroup to 1 Queues</span><br><span class="line"></span><br><span class="line">I1217 07:57:01.770339       1 enqueue.go:162] Leaving Enqueue ...</span><br><span class="line"></span><br><span class="line">I1217 07:57:01.770344       1 reserve.go:28] Enter Reserve ...</span><br><span class="line"></span><br><span class="line">I1217 07:57:01.770355       1 reserve.go:35] No target job, skip it</span><br><span class="line"></span><br><span class="line">I1217 07:57:01.770361       1 reserve.go:36] Leaving Reserve ...</span><br><span class="line"></span><br><span class="line">I1217 07:57:01.770367       1 allocate.go:45] Enter Allocate ...</span><br><span class="line"></span><br><span class="line">I1217 07:57:01.770512       1 allocate.go:115] unlockedNode ID: c01f9ad5-f285-462a-8261-d397c28c261a, Name: 192.168.0.2</span><br><span class="line"></span><br><span class="line">I1217 07:57:01.770522       1 allocate.go:115] unlockedNode ID: 5b5c2742-2344-44d3-98fc-52d01a0adb79, Name: 192.168.0.25</span><br><span class="line"></span><br><span class="line">I1217 07:57:01.770527       1 allocate.go:115] unlockedNode ID: b2c5cdcf-d201-41f8-85cd-4c88e838a6aa, Name: 192.168.0.43</span><br><span class="line"></span><br><span class="line">I1217 07:57:01.770531       1 allocate.go:115] unlockedNode ID: b2802217-f48a-4dab-b92a-6911ae7a2e7d, Name: 192.168.0.88</span><br><span class="line"></span><br><span class="line">I1217 07:57:01.770548       1 allocate.go:170] Namespace &lt;cpaas-system&gt; have no queue, skip it</span><br><span class="line"></span><br><span class="line">I1217 07:57:01.770574       1 allocate.go:170] Namespace &lt;ns-1&gt; have no queue, skip it</span><br><span class="line"></span><br><span class="line">I1217 07:57:01.770600       1 allocate.go:209] Try to allocate resource to 1 tasks of Job &lt;project-1/podgroup-30488abb-93ee-4d3b-9392-5aec5d43a39e&gt; in Namespace &lt;project-1&gt; Queue &lt;default&gt;</span><br><span class="line"></span><br><span class="line">I1217 07:57:01.770608       1 allocate.go:226] There are &lt;4&gt; nodes for Task &lt;project-1/notebook-1538aa66-da29-4866-80a7-598785e3e500-5895db877-8rg9g&gt;</span><br><span class="line"></span><br><span class="line">I1217 07:57:01.770644       1 scheduler_helper.go:99] Considering Task &lt;project-1/notebook-1538aa66-da29-4866-80a7-598785e3e500-5895db877-8rg9g&gt; on node &lt;192.168.0.2&gt;: &lt;cpu 1000.00, memory 1073741824.00&gt; vs. &lt;cpu 24095.00, memory 45479352318.00, hostdev.k8s.io/dev_mem 255000.00, hugepages-1Gi 0.00, hugepages-2Mi 0.00, hostdev.k8s.io/dev_fuse 256000.00&gt;</span><br><span class="line"></span><br><span class="line">I1217 07:57:01.770669       1 scheduler_helper.go:99] Considering Task &lt;project-1/notebook-1538aa66-da29-4866-80a7-598785e3e500-5895db877-8rg9g&gt; on node &lt;192.168.0.25&gt;: &lt;cpu 1000.00, memory 1073741824.00&gt; vs. &lt;cpu 18011.00, memory 38152880128.00, hugepages-2Mi 0.00, hostdev.k8s.io/dev_fuse 256000.00, hostdev.k8s.io/dev_mem 256000.00, hugepages-1Gi 0.00&gt;</span><br><span class="line"></span><br><span class="line">I1217 07:57:01.770693       1 scheduler_helper.go:99] Considering Task &lt;project-1/notebook-1538aa66-da29-4866-80a7-598785e3e500-5895db877-8rg9g&gt; on node &lt;192.168.0.88&gt;: &lt;cpu 1000.00, memory 1073741824.00&gt; vs. &lt;cpu 3671.00, memory 49670938496.00, hostdev.k8s.io/dev_fuse 256000.00, hostdev.k8s.io/dev_mem 256000.00, hugepages-2Mi 0.00, hugepages-1Gi 0.00, tencent.com/vcuda-core 100000.00, tencent.com/vcuda-memory 59000.00&gt;</span><br><span class="line"></span><br><span class="line">I1217 07:57:01.770680       1 scheduler_helper.go:99] Considering Task &lt;project-1/notebook-1538aa66-da29-4866-80a7-598785e3e500-5895db877-8rg9g&gt; on node &lt;192.168.0.43&gt;: &lt;cpu 1000.00, memory 1073741824.00&gt; vs. &lt;cpu 14604.00, memory 36533878784.00, hugepages-2Mi 0.00, hostdev.k8s.io/dev_fuse 256000.00, hostdev.k8s.io/dev_mem 251000.00, hugepages-1Gi 0.00&gt;</span><br><span class="line"></span><br><span class="line">I1217 07:57:01.771095       1 nodeorder.go:314] Total Score for task project-1/notebook-1538aa66-da29-4866-80a7-598785e3e500-5895db877-8rg9g on node 192.168.0.2 is: 195.000000, reason: il 0, ba 0, rf 100, br 95, na 0, sa 0,</span><br><span class="line"></span><br><span class="line">I1217 07:57:01.771113       1 nodeorder.go:314] Total Score for task project-1/notebook-1538aa66-da29-4866-80a7-598785e3e500-5895db877-8rg9g on node 192.168.0.88 is: 658.000000, reason: il 0, ba 25, rf 100, br 58, na 0, sa 0,</span><br><span class="line"></span><br><span class="line">I1217 07:57:01.771113       1 nodeorder.go:314] Total Score for task project-1/notebook-1538aa66-da29-4866-80a7-598785e3e500-5895db877-8rg9g on node 192.168.0.25 is: 199.000000, reason: il 0, ba 0, rf 100, br 99, na 0, sa 0,</span><br><span class="line"></span><br><span class="line">I1217 07:57:01.771131       1 nodeorder.go:314] Total Score for task project-1/notebook-1538aa66-da29-4866-80a7-598785e3e500-5895db877-8rg9g on node 192.168.0.43 is: 193.000000, reason: il 0, ba 0, rf 100, br 93, na 0, sa 0,</span><br><span class="line"></span><br><span class="line">I1217 07:57:01.771275       1 nodeorder.go:403] inter pod affinity Score for task project-1/notebook-1538aa66-da29-4866-80a7-598785e3e500-5895db877-8rg9g is: map[192.168.0.2:0 192.168.0.25:0 192.168.0.43:0 192.168.0.88:0]</span><br><span class="line"></span><br><span class="line">I1217 07:57:01.771309       1 nodeorder.go:455] taint toleration Score for task project-1/notebook-1538aa66-da29-4866-80a7-598785e3e500-5895db877-8rg9g is: map[192.168.0.2:100 192.168.0.25:100 192.168.0.43:100 192.168.0.88:100]</span><br><span class="line"></span><br><span class="line">I1217 07:57:01.771321       1 nodeorder.go:349] Batch Total Score for task project-1/notebook-1538aa66-da29-4866-80a7-598785e3e500-5895db877-8rg9g is: map[192.168.0.2:100 192.168.0.25:100 192.168.0.43:100 192.168.0.88:100]</span><br><span class="line"></span><br><span class="line">I1217 07:57:01.771351       1 allocate.go:256] Binding Task &lt;project-1/notebook-1538aa66-da29-4866-80a7-598785e3e500-5895db877-8rg9g&gt; to node &lt;192.168.0.88&gt;</span><br><span class="line"></span><br><span class="line">I1217 07:57:01.771367       1 scheduler_binder.go:323] AssumePodVolumes for pod &quot;project-1/notebook-1538aa66-da29-4866-80a7-598785e3e500-5895db877-8rg9g&quot;, node &quot;192.168.0.88&quot;</span><br><span class="line"></span><br><span class="line">I1217 07:57:01.771380       1 scheduler_binder.go:333] AssumePodVolumes for pod &quot;project-1/notebook-1538aa66-da29-4866-80a7-598785e3e500-5895db877-8rg9g&quot;, node &quot;192.168.0.88&quot;: all PVCs bound and nothing to do</span><br><span class="line"></span><br><span class="line">I1217 07:57:01.771400       1 statement.go:271] After allocated Task &lt;project-1/notebook-1538aa66-da29-4866-80a7-598785e3e500-5895db877-8rg9g&gt; to Node &lt;192.168.0.88&gt;: idle &lt;cpu 2671.00, memory 48597196672.00, hugepages-1Gi 0.00, tencent.com/vcuda-core 100000.00, tencent.com/vcuda-memory 59000.00, hostdev.k8s.io/dev_fuse 256000.00, hostdev.k8s.io/dev_mem 256000.00, hugepages-2Mi 0.00&gt;, used &lt;cpu 15129.00, memory 30250037376.00&gt;, releasing &lt;cpu 0.00, memory 0.00&gt;</span><br><span class="line"></span><br><span class="line">I1217 07:57:01.771513       1 predicates.go:74] predicates, update pod project-1/notebook-1538aa66-da29-4866-80a7-598785e3e500-5895db877-8rg9g allocate to node [192.168.0.88]</span><br><span class="line"></span><br><span class="line">I1217 07:57:01.771533       1 nodeorder.go:186] node order, update pod project-1/notebook-1538aa66-da29-4866-80a7-598785e3e500-5895db877-8rg9g allocate to node [192.168.0.88]</span><br><span class="line"></span><br><span class="line">I1217 07:57:01.771578       1 preemptnodeorder.go:110] preempt node order, update pod project-1/notebook-1538aa66-da29-4866-80a7-598785e3e500-5895db877-8rg9g allocate to node [192.168.0.88]</span><br><span class="line"></span><br><span class="line">I1217 07:57:01.771586       1 statement.go:289] Allocating operations ...</span><br><span class="line"></span><br><span class="line">I1217 07:57:01.771602       1 statement.go:386] Committing operations ...</span><br><span class="line"></span><br><span class="line">I1217 07:57:01.771638       1 allocate.go:170] Namespace &lt;project-1&gt; have no queue, skip it</span><br><span class="line"></span><br><span class="line">I1217 07:57:01.771726       1 allocate.go:170] Namespace &lt;ti-base&gt; have no queue, skip it</span><br><span class="line"></span><br><span class="line">I1217 07:57:01.771804       1 allocate.go:170] Namespace &lt;ti-inf&gt; have no queue, skip it</span><br><span class="line"></span><br><span class="line">I1217 07:57:01.771871       1 allocate.go:170] Namespace &lt;timatrix&gt; have no queue, skip it</span><br><span class="line"></span><br><span class="line">I1217 07:57:01.771918       1 allocate.go:170] Namespace &lt;tione&gt; have no queue, skip it</span><br><span class="line"></span><br><span class="line">I1217 07:57:01.771932       1 allocate.go:300] Leaving Allocate ...</span><br><span class="line"></span><br><span class="line">I1217 07:57:01.771939       1 backfill.go:41] Enter Backfill ...</span><br><span class="line"></span><br><span class="line">I1217 07:57:01.772005       1 backfill.go:91] Leaving Backfill ...</span><br><span class="line"></span><br><span class="line">I1217 07:57:01.772015       1 preempt.go:46] Enter Preempt ...</span><br><span class="line"></span><br><span class="line">I1217 07:57:01.772055       1 preempt.go:92] No preemptors in Queue &lt;default&gt;, break.</span><br><span class="line"></span><br><span class="line">I1217 07:57:01.772065       1 preempt.go:154] Leaving Preempt ...</span><br><span class="line"></span><br><span class="line">I1217 07:57:01.787981       1 session.go:175] Close Session fd36a727-80af-4ec2-94a6-1ddf1ea1f9c0</span><br><span class="line"></span><br><span class="line">I1217 07:57:01.787999       1 scheduler.go:110] End scheduling ...</span><br></pre></td></tr></table></figure>
+
+<p><strong>附：去除 binpack 之前的创建 1C1G notebook 示例的调度日志（注：此处日志级已修改为 level 4）</strong></p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br></pre></td><td class="code"><pre><span class="line">I1217 07:29:09.467598       1 scheduler.go:91] Start scheduling ...</span><br><span class="line"></span><br><span class="line">I1217 07:29:09.468592       1 cache.go:823] There are &lt;146&gt; Jobs, &lt;1&gt; Queues and &lt;4&gt; Nodes in total for scheduling.</span><br><span class="line"></span><br><span class="line">I1217 07:29:09.468673       1 session.go:157] Open Session e9d30d1d-5596-410f-b28e-eaf21574159d with &lt;4&gt; Node, &lt;146&gt; Job and &lt;1&gt; Queues</span><br><span class="line"></span><br><span class="line">I1217 07:29:09.483558       1 binpack.go:158] Enter binpack plugin ...</span><br><span class="line"></span><br><span class="line">I1217 07:29:09.483577       1 binpack.go:177] resources [nvidia.com/gpu] record in weight but not found on any node</span><br><span class="line"></span><br><span class="line">I1217 07:29:09.483589       1 binpack.go:161] Leaving binpack plugin. binpack.weight[10], binpack.cpu[1], binpack.memory[1], nvidia.com/gpu[5], tencent.com/vcuda-core[5] ...</span><br><span class="line"></span><br><span class="line">I1217 07:29:09.483597       1 enqueue.go:57] Enter Enqueue ...</span><br><span class="line"></span><br><span class="line">I1217 07:29:09.483603       1 enqueue.go:75] Added Queue &lt;default&gt; for Job &lt;project-1/podgroup-91ac6d92-4fea-4f1e-81f6-47401d4dbcc8&gt;</span><br><span class="line"></span><br><span class="line">I1217 07:29:09.483658       1 enqueue.go:91] Try to enqueue PodGroup to 0 Queues</span><br><span class="line"></span><br><span class="line">I1217 07:29:09.483674       1 enqueue.go:162] Leaving Enqueue ...</span><br><span class="line"></span><br><span class="line">I1217 07:29:09.483680       1 reserve.go:28] Enter Reserve ...</span><br><span class="line"></span><br><span class="line">I1217 07:29:09.483692       1 reserve.go:35] No target job, skip it</span><br><span class="line"></span><br><span class="line">I1217 07:29:09.483761       1 reserve.go:36] Leaving Reserve ...</span><br><span class="line"></span><br><span class="line">I1217 07:29:09.483768       1 allocate.go:45] Enter Allocate ...</span><br><span class="line"></span><br><span class="line">I1217 07:29:09.483924       1 allocate.go:115] unlockedNode ID: c01f9ad5-f285-462a-8261-d397c28c261a, Name: 192.168.0.2</span><br><span class="line"></span><br><span class="line">I1217 07:29:09.483935       1 allocate.go:115] unlockedNode ID: 5b5c2742-2344-44d3-98fc-52d01a0adb79, Name: 192.168.0.25</span><br><span class="line"></span><br><span class="line">I1217 07:29:09.483939       1 allocate.go:115] unlockedNode ID: b2c5cdcf-d201-41f8-85cd-4c88e838a6aa, Name: 192.168.0.43</span><br><span class="line"></span><br><span class="line">I1217 07:29:09.483944       1 allocate.go:115] unlockedNode ID: b2802217-f48a-4dab-b92a-6911ae7a2e7d, Name: 192.168.0.88</span><br><span class="line"></span><br><span class="line">I1217 07:29:09.483960       1 allocate.go:170] Namespace &lt;cpaas-system&gt; have no queue, skip it</span><br><span class="line"></span><br><span class="line">I1217 07:29:09.484042       1 allocate.go:170] Namespace &lt;ns-1&gt; have no queue, skip it</span><br><span class="line"></span><br><span class="line">I1217 07:29:09.484067       1 allocate.go:209] Try to allocate resource to 1 tasks of Job &lt;project-1/podgroup-95dccc19-e4b1-4ccd-ae87-52545746996d&gt; in Namespace &lt;project-1&gt; Queue &lt;default&gt;</span><br><span class="line"></span><br><span class="line">I1217 07:29:09.484102       1 allocate.go:226] There are &lt;4&gt; nodes for Task &lt;project-1/notebook-788644f3-f7f1-4611-951e-6c5807bc7934-78465f59cf-5qxql&gt;</span><br><span class="line"></span><br><span class="line">I1217 07:29:09.484140       1 scheduler_helper.go:99] Considering Task &lt;project-1/notebook-788644f3-f7f1-4611-951e-6c5807bc7934-78465f59cf-5qxql&gt; on node &lt;192.168.0.2&gt;: &lt;cpu 1000.00, memory 1073741824.00&gt; vs. &lt;cpu 24095.00, memory 45479352318.00, hugepages-2Mi 0.00, hostdev.k8s.io/dev_fuse 256000.00, hostdev.k8s.io/dev_mem 255000.00, hugepages-1Gi 0.00&gt;</span><br><span class="line"></span><br><span class="line">I1217 07:29:09.484159       1 scheduler_helper.go:99] Considering Task &lt;project-1/notebook-788644f3-f7f1-4611-951e-6c5807bc7934-78465f59cf-5qxql&gt; on node &lt;192.168.0.25&gt;: &lt;cpu 1000.00, memory 1073741824.00&gt; vs. &lt;cpu 18011.00, memory 38152880128.00, hostdev.k8s.io/dev_fuse 256000.00, hostdev.k8s.io/dev_mem 256000.00, hugepages-1Gi 0.00, hugepages-2Mi 0.00&gt;</span><br><span class="line"></span><br><span class="line">I1217 07:29:09.484208       1 scheduler_helper.go:99] Considering Task &lt;project-1/notebook-788644f3-f7f1-4611-951e-6c5807bc7934-78465f59cf-5qxql&gt; on node &lt;192.168.0.43&gt;: &lt;cpu 1000.00, memory 1073741824.00&gt; vs. &lt;cpu 14604.00, memory 36533878784.00, hostdev.k8s.io/dev_mem 251000.00, hugepages-1Gi 0.00, hugepages-2Mi 0.00, hostdev.k8s.io/dev_fuse 256000.00&gt;</span><br><span class="line"></span><br><span class="line">I1217 07:29:09.484220       1 scheduler_helper.go:99] Considering Task &lt;project-1/notebook-788644f3-f7f1-4611-951e-6c5807bc7934-78465f59cf-5qxql&gt; on node &lt;192.168.0.88&gt;: &lt;cpu 1000.00, memory 1073741824.00&gt; vs. &lt;cpu 4671.00, memory 50744680320.00, hostdev.k8s.io/dev_mem 256000.00, hugepages-2Mi 0.00, tencent.com/vcuda-core 100000.00, tencent.com/vcuda-memory 59000.00, hostdev.k8s.io/dev_fuse 256000.00, hugepages-1Gi 0.00&gt;</span><br><span class="line"></span><br><span class="line">I1217 07:29:09.484547       1 nodeorder.go:314] Total Score for task project-1/notebook-788644f3-f7f1-4611-951e-6c5807bc7934-78465f59cf-5qxql on node 192.168.0.43 is: 193.000000, reason: il 0, ba 0, rf 100, br 93, na 0, sa 0,</span><br><span class="line"></span><br><span class="line">I1217 07:29:09.484550       1 nodeorder.go:314] Total Score for task project-1/notebook-788644f3-f7f1-4611-951e-6c5807bc7934-78465f59cf-5qxql on node 192.168.0.2 is: 195.000000, reason: il 0, ba 0, rf 100, br 95, na 0, sa 0,</span><br><span class="line"></span><br><span class="line">I1217 07:29:09.484563       1 binpack.go:188] Binpack score for Task project-1/notebook-788644f3-f7f1-4611-951e-6c5807bc7934-78465f59cf-5qxql on node 192.168.0.43 is: 638.0985332095383</span><br><span class="line"></span><br><span class="line">I1217 07:29:09.484565       1 nodeorder.go:314] Total Score for task project-1/notebook-788644f3-f7f1-4611-951e-6c5807bc7934-78465f59cf-5qxql on node 192.168.0.88 is: 662.000000, reason: il 0, ba 25, rf 100, br 62, na 0, sa 0,</span><br><span class="line"></span><br><span class="line">I1217 07:29:09.484572       1 binpack.go:188] Binpack score for Task project-1/notebook-788644f3-f7f1-4611-951e-6c5807bc7934-78465f59cf-5qxql on node 192.168.0.2 is: 494.11448190531286</span><br><span class="line"></span><br><span class="line">I1217 07:29:09.484578       1 binpack.go:188] Binpack score for Task project-1/notebook-788644f3-f7f1-4611-951e-6c5807bc7934-78465f59cf-5qxql on node 192.168.0.88 is: 532.2531353036131</span><br><span class="line"></span><br><span class="line">I1217 07:29:09.484586       1 nodeorder.go:314] Total Score for task project-1/notebook-788644f3-f7f1-4611-951e-6c5807bc7934-78465f59cf-5qxql on node 192.168.0.25 is: 199.000000, reason: il 0, ba 0, rf 100, br 99, na 0, sa 0,</span><br><span class="line"></span><br><span class="line">I1217 07:29:09.484602       1 binpack.go:188] Binpack score for Task project-1/notebook-788644f3-f7f1-4611-951e-6c5807bc7934-78465f59cf-5qxql on node 192.168.0.25 is: 594.3693530508443</span><br><span class="line"></span><br><span class="line">I1217 07:29:09.484725       1 nodeorder.go:403] inter pod affinity Score for task project-1/notebook-788644f3-f7f1-4611-951e-6c5807bc7934-78465f59cf-5qxql is: map[192.168.0.2:0 192.168.0.25:0 192.168.0.43:0 192.168.0.88:0]</span><br><span class="line"></span><br><span class="line">I1217 07:29:09.484811       1 nodeorder.go:455] taint toleration Score for task project-1/notebook-788644f3-f7f1-4611-951e-6c5807bc7934-78465f59cf-5qxql is: map[192.168.0.2:100 192.168.0.25:100 192.168.0.43:100 192.168.0.88:100]</span><br><span class="line"></span><br><span class="line">I1217 07:29:09.484819       1 nodeorder.go:349] Batch Total Score for task project-1/notebook-788644f3-f7f1-4611-951e-6c5807bc7934-78465f59cf-5qxql is: map[192.168.0.2:100 192.168.0.25:100 192.168.0.43:100 192.168.0.88:100]</span><br><span class="line"></span><br><span class="line">I1217 07:29:09.484854       1 allocate.go:256] Binding Task &lt;project-1/notebook-788644f3-f7f1-4611-951e-6c5807bc7934-78465f59cf-5qxql&gt; to node &lt;192.168.0.88&gt;</span><br><span class="line"></span><br><span class="line">I1217 07:29:09.484867       1 scheduler_binder.go:323] AssumePodVolumes for pod &quot;project-1/notebook-788644f3-f7f1-4611-951e-6c5807bc7934-78465f59cf-5qxql&quot;, node &quot;192.168.0.88&quot;</span><br><span class="line"></span><br><span class="line">I1217 07:29:09.484875       1 scheduler_binder.go:333] AssumePodVolumes for pod &quot;project-1/notebook-788644f3-f7f1-4611-951e-6c5807bc7934-78465f59cf-5qxql&quot;, node &quot;192.168.0.88&quot;: all PVCs bound and nothing to do</span><br><span class="line"></span><br><span class="line">I1217 07:29:09.484895       1 statement.go:271] After allocated Task &lt;project-1/notebook-788644f3-f7f1-4611-951e-6c5807bc7934-78465f59cf-5qxql&gt; to Node &lt;192.168.0.88&gt;: idle &lt;cpu 3671.00, memory 49670938496.00, tencent.com/vcuda-memory 59000.00, hostdev.k8s.io/dev_fuse 256000.00, hugepages-1Gi 0.00, hostdev.k8s.io/dev_mem 256000.00, hugepages-2Mi 0.00, tencent.com/vcuda-core 100000.00&gt;, used &lt;cpu 14129.00, memory 29176295552.00&gt;, releasing &lt;cpu 0.00, memory 0.00&gt;</span><br><span class="line"></span><br><span class="line">I1217 07:29:09.484995       1 predicates.go:74] predicates, update pod project-1/notebook-788644f3-f7f1-4611-951e-6c5807bc7934-78465f59cf-5qxql allocate to node [192.168.0.88]</span><br><span class="line"></span><br><span class="line">I1217 07:29:09.485014       1 nodeorder.go:186] node order, update pod project-1/notebook-788644f3-f7f1-4611-951e-6c5807bc7934-78465f59cf-5qxql allocate to node [192.168.0.88]</span><br><span class="line"></span><br><span class="line">I1217 07:29:09.485032       1 preemptnodeorder.go:110] preempt node order, update pod project-1/notebook-788644f3-f7f1-4611-951e-6c5807bc7934-78465f59cf-5qxql allocate to node [192.168.0.88]</span><br><span class="line"></span><br><span class="line">I1217 07:29:09.485035       1 statement.go:289] Allocating operations ...</span><br><span class="line"></span><br><span class="line">I1217 07:29:09.485049       1 statement.go:386] Committing operations ...</span><br><span class="line"></span><br><span class="line">I1217 07:29:09.485102       1 allocate.go:170] Namespace &lt;project-1&gt; have no queue, skip it</span><br><span class="line"></span><br><span class="line">I1217 07:29:09.485194       1 allocate.go:170] Namespace &lt;ti-base&gt; have no queue, skip it</span><br><span class="line"></span><br><span class="line">I1217 07:29:09.485267       1 allocate.go:170] Namespace &lt;ti-inf&gt; have no queue, skip it</span><br><span class="line"></span><br><span class="line">I1217 07:29:09.485339       1 allocate.go:170] Namespace &lt;timatrix&gt; have no queue, skip it</span><br><span class="line"></span><br><span class="line">I1217 07:29:09.485392       1 allocate.go:170] Namespace &lt;tione&gt; have no queue, skip it</span><br><span class="line"></span><br><span class="line">I1217 07:29:09.485403       1 allocate.go:300] Leaving Allocate ...</span><br><span class="line"></span><br><span class="line">I1217 07:29:09.485410       1 backfill.go:41] Enter Backfill ...</span><br><span class="line"></span><br><span class="line">I1217 07:29:09.485467       1 backfill.go:91] Leaving Backfill ...</span><br><span class="line"></span><br><span class="line">I1217 07:29:09.485497       1 preempt.go:46] Enter Preempt ...</span><br><span class="line"></span><br><span class="line">I1217 07:29:09.485545       1 preempt.go:92] No preemptors in Queue &lt;default&gt;, break.</span><br><span class="line"></span><br><span class="line">I1217 07:29:09.485554       1 preempt.go:154] Leaving Preempt ...</span><br><span class="line"></span><br><span class="line">I1217 07:29:09.494793       1 session.go:175] Close Session e9d30d1d-5596-410f-b28e-eaf21574159d</span><br></pre></td></tr></table></figure>
+
+<h4 id="通过创建业务-Pod-去验证"><a href="#通过创建业务-Pod-去验证" class="headerlink" title="通过创建业务 Pod 去验证"></a><strong>通过创建业务 Pod 去验证</strong></h4><p>  通过调整 notebook 副本数，增加 Pod 数量，观察 Pod 的在集群上的分布情况。该测试方法在机器少的环境对比效果不明显。</p>
+<p>调整副本数量</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">[root@tke01 ~]# kubectl scale deploy -n project-1 notebook-1538aa66-da29-4866-80a7-598785e3e500 --replicas=10</span><br><span class="line">deployment.apps/notebook-1538aa66-da29-4866-80a7-598785e3e500 scaled</span><br></pre></td></tr></table></figure>
+
+<p>查看 Pod 的分布情况，是否有尽量分布到不同的节点。</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">[root@tke01 ~]# kubectl get pod -n project-1  -o wide  | grep notebook</span><br><span class="line">notebook-1538aa66-da29-4866-80a7-598785e3e500-5895db877-8rg9g     2/2     Running           0          9m21s   10.199.10.177   192.168.0.88   &lt;none&gt;           &lt;none&gt;</span><br><span class="line">notebook-1538aa66-da29-4866-80a7-598785e3e500-5895db877-bh28k     0/2     Init:0/1          0          3s      &lt;none&gt;          192.168.0.2    &lt;none&gt;           &lt;none&gt;</span><br><span class="line">notebook-1538aa66-da29-4866-80a7-598785e3e500-5895db877-bpfdj     0/2     Init:0/1          0          3s      &lt;none&gt;          192.168.0.25   &lt;none&gt;           &lt;none&gt;</span><br><span class="line">notebook-1538aa66-da29-4866-80a7-598785e3e500-5895db877-c5sgv     0/2     Init:0/1          0          3s      &lt;none&gt;          192.168.0.25   &lt;none&gt;           &lt;none&gt;</span><br><span class="line">notebook-1538aa66-da29-4866-80a7-598785e3e500-5895db877-dbcxm     2/2     Running           0          3s      10.199.10.189   192.168.0.88   &lt;none&gt;           &lt;none&gt;</span><br><span class="line">notebook-1538aa66-da29-4866-80a7-598785e3e500-5895db877-jt97c     0/2     Init:0/1          0          3s      &lt;none&gt;          192.168.0.25   &lt;none&gt;           &lt;none&gt;</span><br><span class="line">notebook-1538aa66-da29-4866-80a7-598785e3e500-5895db877-klh8n     0/2     PodInitializing   0          3s      10.199.10.192   192.168.0.88   &lt;none&gt;           &lt;none&gt;</span><br><span class="line">notebook-1538aa66-da29-4866-80a7-598785e3e500-5895db877-mq5hf     0/2     Init:0/1          0          3s      10.199.10.191   192.168.0.2    &lt;none&gt;           &lt;none&gt;</span><br><span class="line">notebook-1538aa66-da29-4866-80a7-598785e3e500-5895db877-v68cq     0/2     Init:0/1          0          3s      &lt;none&gt;          192.168.0.25   &lt;none&gt;           &lt;none&gt;</span><br><span class="line">notebook-1538aa66-da29-4866-80a7-598785e3e500-5895db877-xt4tx     0/2     Init:0/1          0          3s      &lt;none&gt;          192.168.0.25   &lt;none&gt;           &lt;none&gt;</span><br><span class="line">notebook-788644f3-f7f1-4611-951e-6c5807bc7934-78465f59cf-5qxql    2/2     Running           0          37m     10.199.10.169   192.168.0.88   &lt;none&gt;           &lt;none&gt;</span><br><span class="line">notebook-84e3ebf6-564e-42d8-aa7a-7c7d4c6ab1f6-6f76d587f9-mn87r    2/2     Running           0          4d4h    10.199.3.15     192.168.0.88   &lt;none&gt;           &lt;none&gt;</span><br></pre></td></tr></table></figure>
 
       
     </div>
@@ -1601,202 +1718,6 @@
 <p><a target="_blank" rel="noopener" href="https://cloud.tencent.com/developer/article/1639217">https://cloud.tencent.com/developer/article/1639217</a></p>
 <p><a target="_blank" rel="noopener" href="https://github.com/kubernetes/kubernetes/blob/v1.17.0/pkg/scheduler/algorithm/predicates/predicates.go">https://github.com/kubernetes/kubernetes/blob/v1.17.0/pkg/scheduler/algorithm/predicates/predicates.go</a></p>
 <p><a target="_blank" rel="noopener" href="https://github.com/kubernetes/community/blob/master/contributors/design-proposals/scheduling/podaffinity.md">https://github.com/kubernetes/community/blob/master/contributors/design-proposals/scheduling/podaffinity.md</a></p>
-
-      
-    </div>
-
-    
-    
-    
-
-    <footer class="post-footer">
-        <div class="post-eof"></div>
-      
-    </footer>
-  </article>
-</div>
-
-
-
-
-    
-
-
-<div class="post-block">
-  
-  
-
-  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="">
-    <link itemprop="mainEntityOfPage" href="https://guoltan.github.io/2021/09/13/tkestack%E6%89%A9%E5%AE%B9%E8%8A%82%E7%82%B9%E5%A4%B1%E8%B4%A5%E6%8E%92%E6%9F%A5%E6%8C%87%E5%BC%95/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.gif">
-      <meta itemprop="name" content="guoltan">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="guoltan个人博客">
-      <meta itemprop="description" content="">
-    </span>
-
-    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
-      <meta itemprop="name" content="undefined | guoltan个人博客">
-      <meta itemprop="description" content="">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          <a href="/2021/09/13/tkestack%E6%89%A9%E5%AE%B9%E8%8A%82%E7%82%B9%E5%A4%B1%E8%B4%A5%E6%8E%92%E6%9F%A5%E6%8C%87%E5%BC%95/" class="post-title-link" itemprop="url">tkestack扩容节点失败排查指引</a>
-        </h2>
-
-        <div class="post-meta-container">
-          <div class="post-meta">
-    <span class="post-meta-item">
-      <span class="post-meta-item-icon">
-        <i class="far fa-calendar"></i>
-      </span>
-      <span class="post-meta-item-text">发表于</span>
-
-      <time title="创建时间：2021-09-13 18:36:15" itemprop="dateCreated datePublished" datetime="2021-09-13T18:36:15+08:00">2021-09-13</time>
-    </span>
-
-  
-    <span class="post-meta-item" title="本文字数">
-      <span class="post-meta-item-icon">
-        <i class="far fa-file-word"></i>
-      </span>
-      <span class="post-meta-item-text">本文字数：</span>
-      <span>3.6k</span>
-    </span>
-    <span class="post-meta-item" title="阅读时长">
-      <span class="post-meta-item-icon">
-        <i class="far fa-clock"></i>
-      </span>
-      <span class="post-meta-item-text">阅读时长 &asymp;</span>
-      <span>7 分钟</span>
-    </span>
-</div>
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-          <h1 id="业务集群是如何创建的？"><a href="#业务集群是如何创建的？" class="headerlink" title="业务集群是如何创建的？"></a>业务集群是如何创建的？</h1><p>在我们可以在 <strong>控制台-平台管理-集群管理-集群</strong> 处，点击创建业务集群，输入业务集群的参数，来创建一个业务集群。</p>
-<p>在创建业务集群以后，在控制台上可以点击执行过程，查看创建业务集群有哪些步骤。我们也可以通过 kubectl describe cluster 集群名称，去查看某个集群在创建时经历了哪些阶段。</p>
-<p>创建业务集群的请求，实际上将会转发给 cpaas-system&#x2F;tke-platform-api 这个组件，它主要用于监听与校验请求 tke platform API 请求，为请求配置 API 对象。它将会校验用户在浏览器上提交的请求是否合法。</p>
-<p>tke-platform-controller 通过 tke-platform-api 监视平台 API 对象的状态，配置 TKE 平台，完成业务集群创建，节点扩容等工作。tke-platform-controller 检测到新的资源创建请求时（cluster或者 machines 资源），再通过资源信息 SSH 到指定的机器上，执行相应的初始化&#x2F;安装工作。</p>
-<p><strong>总结出调用链关系如下：</strong></p>
-<p>客户端 -&gt; Console UI -&gt; 将页面生成的 json 提交到接口 &#x2F;apis&#x2F;platform.tkestack.io&#x2F;v1&#x2F;clusters -&gt; 调用 ingress-controller，基于 ingress kubernetes 完成转发 -&gt; 转发给 apiserver -&gt; 对应扩展的 apiservice(v1.platform.tkestack.io) -&gt; 该扩展接口对应的是 cpaas-system&#x2F;tke-platform-api 组件，将请求转发 -&gt; 由 cpaas-system&#x2F;tke-platform-api 完成参数校验 -&gt; cpaas-system&#x2F;tke-platform-controller 完成集群配置工作 -&gt; 提交给 apiserver（创建 cluster、machine 资源） -&gt; tke-platform-controller 基于 cluster&#x2F;machine 资源的信息，通过 SSH 登录到相应节点，完成节点&#x2F;集群创建工作。 </p>
-<p><strong>从调用链关系来看，TKE 业务集群创建、节点工作至少要满足如下条件：</strong></p>
-<ul>
-<li>客户端需要能够访问 TKE 控制台</li>
-<li>TKE global 集群的状态运行正常，至少保证控制平面组件（apiserver、etcd）控制台组件、ingress-controller、tke-platform-api、tke-platform-controller 等组件能够正常运行</li>
-<li>tke-platform-controller 组件与待扩容的节点连通性正常。</li>
-</ul>
-<h1 id="业务集群-扩容节点失败的排查方法"><a href="#业务集群-扩容节点失败的排查方法" class="headerlink" title="业务集群&#x2F;扩容节点失败的排查方法"></a>业务集群&#x2F;扩容节点失败的排查方法</h1><h2 id="问题处理思路"><a href="#问题处理思路" class="headerlink" title="问题处理思路"></a>问题处理思路</h2><p>对于此类问题，处理思路如下：</p>
-<ul>
-<li>查看常见的节点扩容&#x2F;业务集群失败 case，查看是否命中问题场景。</li>
-<li>确保 global 集群当前状态运行正常，核心组件 Pod 状态运行正常。</li>
-<li>确保待创建业务集群节点&#x2F;扩容节点当前状态正常（磁盘、网络、IO、内存、CPU等）。</li>
-<li>根据 tke 创建业务集群&#x2F;扩容节点的调用链，定位日志。</li>
-<li>收集环境信息，提工单上升给 1.5线&#x2F;2线 同学协助处理。</li>
-</ul>
-<h2 id="常见的节点扩容-业务集群失败-case"><a href="#常见的节点扩容-业务集群失败-case" class="headerlink" title="常见的节点扩容&#x2F;业务集群失败 case"></a>常见的节点扩容&#x2F;业务集群失败 case</h2><table>
-<thead>
-<tr>
-<th>故障现象</th>
-<th>处理建议</th>
-</tr>
-</thead>
-<tbody><tr>
-<td>在扩容&#x2F;创建时，通过 kubectl get pod -A 会观察到 Evicited 状态的 Pod</td>
-<td>清理无用的数据文件或者扩容</td>
-</tr>
-<tr>
-<td>EnsureDocker 步骤执行失败</td>
-<td>1. 需要确认是否手动安装过 Docker，尝试收集 docker 日志（journalctl -u docker &gt; docker.log) 2. 确认待扩容节点是否适用 172.17.0.0&#x2F;16 相关的网段，如果时的话，大概率是路由问题，需要通过临时添加静态路由规避 docker0 导致回程流量丢失的问题</td>
-</tr>
-<tr>
-<td>EnsureKubelet 步骤执行失败</td>
-<td>完整的清理掉节点配置，尝试重新扩容</td>
-</tr>
-<tr>
-<td>EnsureKubeconfig 步骤执行失败，通过后台查询，kube-ovn-cni 组件状态处于 CrashLoopBackOff 状态</td>
-<td>参考工单处理方法，如果无法解决，收集组件日志，反馈给后端同学定位。</td>
-</tr>
-<tr>
-<td>执行步骤经常出现 i&#x2F;o timeout 的现象</td>
-<td>建议测试 tke-platform-controller Pod 与待扩容节点间的连通性是否稳定</td>
-</tr>
-<tr>
-<td>在重新安装业务集群时，出现端口&#x2F;IP冲突问题</td>
-<td>手动清理冲突的端口，kube-ovn 会自动重建</td>
-</tr>
-<tr>
-<td>执行步骤 EnsureJoinPhaseKubeletStart 失败</td>
-<td>测试待扩容节点 curl apiserver 地址的连通性</td>
-</tr>
-</tbody></table>
-<h2 id="Phase-说明"><a href="#Phase-说明" class="headerlink" title="Phase 说明"></a>Phase 说明</h2><p>在创建业务集群&#x2F;扩容节点时分了很多个 phase，每个 phase 代表一个步骤。其中有几个 phase 在创建集群&#x2F;扩容节点中起到了非常重要的作用。接下来对这些 phase 的作用和执行失败的常见原因进行一个说明。</p>
-<table>
-<thead>
-<tr>
-<th>phase</th>
-<th>作用</th>
-<th>失败原因</th>
-<th>处理建议</th>
-</tr>
-</thead>
-<tbody><tr>
-<td>EnsureCopyFiles</td>
-<td>拷贝配置文件</td>
-<td>可能是待扩容节点的 SSH 配置未支持 sftp 配置</td>
-<td>使用 one-deploy 完成节点初始化工作，或者检查待扩容节点的 sftp 配置是否已打开</td>
-</tr>
-<tr>
-<td>EnsureDocker</td>
-<td>安装 Docker 客户端</td>
-<td>安装 docker 失败或者待扩容节点使用了冲突的网段。</td>
-<td>收集 Docker 日志、排查待扩容节点网段是否为 172.17.x.x&#x2F;16</td>
-</tr>
-<tr>
-<td>EnsureKubelet</td>
-<td>安装 Kubelet</td>
-<td>可能是节点残留配置导致</td>
-<td>参考工单 <a target="_blank" rel="noopener" href="https://andon.cloud.tencent.com/ticket/detail/?id=6611025&sign=260f10fda48b6c2f7d335e2d4a28685f">6611025</a></td>
-</tr>
-<tr>
-<td>EnsureCNIPlugins</td>
-<td>安装 CNI 插件</td>
-<td>CNI 插件状态运行异常</td>
-<td>排查 CNI 组件的状态，通常是节点网卡名字不统一导致启动失败。</td>
-</tr>
-<tr>
-<td>EnsureJoinPhaseKubeletStart</td>
-<td>加入 kubernetes 集群</td>
-<td>待扩容节点连接控制平面 6443 端口异常</td>
-<td>测试待扩容节点与 集群控制平面之间的连通性</td>
-</tr>
-<tr>
-<td>EnsureNodeReady</td>
-<td>获取节点状态是否为 Ready</td>
-<td>节点状态 NotReady</td>
-<td>参考<a target="_blank" rel="noopener" href="https://gdc.lexiangla.com/teams/k100044/docs/842da35cae3511ebb4e66afd0c8a692a?company_from=gdc">《Kubernetes Node NotReady 排查思路与处理方法》</a></td>
-</tr>
-<tr>
-<td>EnsurePostInstallHook</td>
-<td>通过 check-job 校验安装完整度</td>
-<td>部分组件未正常运行</td>
-<td>通过 kubectl get pod -A 获取非正常状态的 Pod，逐个处理</td>
-</tr>
-</tbody></table>
-<h2 id="信息收集思路"><a href="#信息收集思路" class="headerlink" title="信息收集思路"></a>信息收集思路</h2><h3 id="测试节点间连通性"><a href="#测试节点间连通性" class="headerlink" title="测试节点间连通性"></a>测试节点间连通性</h3><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta prompt_"># </span><span class="language-bash">使用 tke-platform-controller 容器进行连通性测试</span></span><br><span class="line">kubectl exec -it -n cpaas-system tke-platform-controller-xxxx-xxxx sh</span><br><span class="line"><span class="meta prompt_"></span></span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">测试连通性方法，在每个 tke-platform-controller 副本上都需要进行测试</span></span><br><span class="line">nc -z -v 扩容节点地址/业务集群机器地址 22（默认 SSH 使用 22 端口）</span><br></pre></td></tr></table></figure>
-
-<h3 id="校验组件状态"><a href="#校验组件状态" class="headerlink" title="校验组件状态"></a>校验组件状态</h3><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta prompt_"># </span><span class="language-bash">global 集群操作</span></span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">获取组件状态</span></span><br><span class="line">kubectl get pod -A | grep -v unn</span><br><span class="line">kubectl get apprelease -A</span><br><span class="line"><span class="meta prompt_"></span></span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">业务集群节点、或者待扩容节点所在的集群上操作</span></span><br><span class="line">kubectl get pod -A | grep -v unn</span><br></pre></td></tr></table></figure>
-
-<h3 id="组件日志收集"><a href="#组件日志收集" class="headerlink" title="组件日志收集"></a>组件日志收集</h3><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta prompt_"># </span><span class="language-bash">apiserver</span> </span><br><span class="line">kubectl logs -n kube-system kube-apiserver-x.x.x.x &gt; kube-apiserver-x.x.x.x.log</span><br><span class="line"><span class="meta prompt_"></span></span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">etcd</span></span><br><span class="line">kubectl logs -n kube-system etcd-x.x.x.x &gt; etcd-x.x.x.x.log</span><br><span class="line"><span class="meta prompt_"></span></span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">tke-platform-api</span></span><br><span class="line">kubectl logs -n kube-system tke-platform-api-xxxx-xxxx &gt; tke-platform-api-xxxx-xxxx.log</span><br><span class="line"><span class="meta prompt_"></span></span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">tke-platform-controller</span></span><br><span class="line">kubectl logs -n kube-system tke-platform-controller-xxxx-xxxx &gt; tke-platform-controller-xxxx-xxxx.log</span><br><span class="line"><span class="meta prompt_"></span></span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">如果需要将日志发送到后端，建议先进行压缩，这样能减少传输文件的大小。</span></span><br><span class="line">tar zcvf tke-log.tar.gz 日志目录</span><br></pre></td></tr></table></figure>
 
       
     </div>
